@@ -7,27 +7,22 @@ so your customizations are reproducible on any machine.
 
 ## What's in the box
 
-| Skill              | What it does                                                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Skill | What it does |
+|-------|--------------|
 | `/scaffold-config` | Creates the config repo: folder structure, global `CLAUDE.md`, `settings.template.json`, and an idempotent `bootstrap.sh` symlinker. |
+| `/add-skill` | Interviews you, then authors a new skill into `skills/`. |
+| `/add-agent` | Interviews you, then authors a new subagent into `agents/`. |
+| `/add-hook`  | Interviews you, then writes a hook script and wires it into `settings.template.json`. |
 
 The three `add-*` skills ask targeted questions first, so the generated config
 has specific, reliably-triggering descriptions instead of vague boilerplate.
 
 ## Install
 
-This repo is both a plugin and a single-plugin marketplace.
+`configure-claude` ships from the [`markusjohansen`](../) marketplace:
 
 ```sh
-# Add the marketplace (the repo hosting marketplace.json), then install:
 claude plugin marketplace add MarkusJohansen/markusjohansen
-claude plugin install configure-claude@markusjohansen
-```
-
-Or from a local clone:
-
-```sh
-claude plugin marketplace add /path/to/markusjohansen
 claude plugin install configure-claude@markusjohansen
 ```
 
