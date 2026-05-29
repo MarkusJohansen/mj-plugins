@@ -19,15 +19,15 @@ has specific, reliably-triggering descriptions instead of vague boilerplate.
 This repo is both a plugin and a single-plugin marketplace.
 
 ```sh
-# Add the marketplace, then install:
-claude plugin marketplace add <owner>/configure-claude
+# Add the marketplace (the repo hosting marketplace.json), then install:
+claude plugin marketplace add MarkusJohansen/markusjohansen
 claude plugin install configure-claude@markusjohansen
 ```
 
 Or from a local clone:
 
 ```sh
-claude plugin marketplace add /path/to/configure-claude
+claude plugin marketplace add /path/to/markusjohansen
 claude plugin install configure-claude@markusjohansen
 ```
 

@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "configure-claude",
-      "source": "./",
+      "source": "./configure-claude",
       "description": "Scaffolds and maintains a personal Claude Code config space (skills, subagents, hooks, rules, global CLAUDE.md, bootstrap symlinker)."
     }
   ]
