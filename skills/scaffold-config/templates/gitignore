@@ -1,0 +1,8 @@
+# Machine-specific — never commit.
+settings.local.json
+.bootstrap.local.sh
+
+# OS / editor cruft
+.DS_Store
+*.swp
+*~

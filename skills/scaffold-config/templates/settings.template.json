@@ -1,0 +1,12 @@
+{
+  "env": {},
+  "permissions": {
+    "allow": [],
+    "defaultMode": "auto"
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"__REPO__/hooks/statusline.sh\""
+  },
+  "hooks": {}
+}

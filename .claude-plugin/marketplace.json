@@ -1,0 +1,17 @@
+{
+  "name": "markusjohansen",
+  "owner": {
+    "name": "Markus Johansen"
+  },
+  "metadata": {
+    "description": "Markus Johansen's Claude Code plugin marketplace.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "configure-claude",
+      "source": "./",
+      "description": "Scaffolds and maintains a personal Claude Code config space (skills, subagents, hooks, rules, global CLAUDE.md, bootstrap symlinker)."
+    }
+  ]
+}

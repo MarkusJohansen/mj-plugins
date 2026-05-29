@@ -1,0 +1,18 @@
+{
+  "name": "configure-claude",
+  "description": "Scaffolds and maintains a personal Claude Code config space — a versioned repo of skills, subagents, hooks, rules, a global CLAUDE.md and a bootstrap that symlinks it all into ~/.claude.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Markus Johansen"
+  },
+  "keywords": [
+    "config",
+    "scaffold",
+    "bootstrap",
+    "dotfiles",
+    "skills",
+    "subagents",
+    "hooks"
+  ],
+  "license": "MIT"
+}
