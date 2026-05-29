@@ -19,11 +19,11 @@ has specific, reliably-triggering descriptions instead of vague boilerplate.
 
 ## Install
 
-`configure-claude` ships from the [`markusjohansen`](../) marketplace:
+`configure-claude` ships from the [`claude-marketplace`](../) marketplace:
 
 ```sh
-claude plugin marketplace add MarkusJohansen/markusjohansen
-claude plugin install configure-claude@markusjohansen
+claude plugin marketplace add MarkusJohansen/claude-marketplace
+claude plugin install configure-claude@claude-marketplace
 ```
 
 You can also browse and install interactively with the `/plugin` command inside

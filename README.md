@@ -1,4 +1,4 @@
-# markusjohansen
+# claude-marketplace
 
 Markus Johansen's personal [Claude Code plugin marketplace](https://docs.claude.com/en/docs/claude-code/plugins).
 A marketplace is just a git repo with a `.claude-plugin/marketplace.json` at its
@@ -7,13 +7,13 @@ root; each plugin lives in its own subdirectory.
 ## Add the marketplace
 
 ```sh
-claude plugin marketplace add MarkusJohansen/markusjohansen
+claude plugin marketplace add MarkusJohansen/claude-marketplace
 ```
 
 Then install any plugin below (or browse interactively with `/plugin`):
 
 ```sh
-claude plugin install <plugin>@markusjohansen
+claude plugin install <plugin>@claude-marketplace
 ```
 
 ## Plugins
@@ -23,7 +23,7 @@ claude plugin install <plugin>@markusjohansen
 | [`configure-claude`](./configure-claude) | Scaffolds and grows a personal Claude Code config space — skills, subagents, hooks, rules, a global `CLAUDE.md`, and a `bootstrap.sh` that symlinks it all into `~/.claude/`. |
 
 ```sh
-claude plugin install configure-claude@markusjohansen
+claude plugin install configure-claude@claude-marketplace
 ```
 
 ## Adding a plugin to this marketplace
@@ -33,7 +33,7 @@ claude plugin install configure-claude@markusjohansen
    `commands/`, `agents/`, `skills/`, or `hooks/` as needed.
 3. Add an entry to `.claude-plugin/marketplace.json` with
    `"source": "./<plugin-name>"`.
-4. Commit and push — `claude plugin marketplace update markusjohansen` picks it up.
+4. Commit and push — `claude plugin marketplace update claude-marketplace` picks it up.
 
 ## License
 
