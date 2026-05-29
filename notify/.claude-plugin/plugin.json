@@ -1,0 +1,10 @@
+{
+  "name": "notify",
+  "description": "Desktop attention cues for Claude Code — a Stop chime that only fires when you've walked away (with the UserPromptSubmit idle-tracker it depends on) plus a macOS notification banner when Claude needs you.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Markus Johansen"
+  },
+  "keywords": ["notification", "chime", "sound", "macos", "hooks"],
+  "license": "MIT"
+}

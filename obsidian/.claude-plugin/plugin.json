@@ -1,0 +1,17 @@
+{
+  "name": "obsidian",
+  "description": "Obsidian vault toolkit — note creation, tidying, abstracting, linking and culling skills, the vault-librarian subagent, a path-scoped vault rule, and edit-guard / frontmatter / stub hooks.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Markus Johansen"
+  },
+  "keywords": [
+    "obsidian",
+    "vault",
+    "notes",
+    "knowledge-management",
+    "hooks",
+    "subagents"
+  ],
+  "license": "MIT"
+}

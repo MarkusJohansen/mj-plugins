@@ -1,0 +1,17 @@
+{
+  "name": "ralph",
+  "description": "A plugin for setting up a Ralph Wiggum development environment.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Markus Johansen"
+  },
+  "keywords": [
+    "ralph",
+    "development",
+    "environment",
+    "setup",
+    "vibe coding",
+    "unsupervised coding"
+  ],
+  "license": "MIT"
+}

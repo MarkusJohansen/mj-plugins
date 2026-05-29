@@ -9,9 +9,29 @@
   },
   "plugins": [
     {
-      "name": "configure-claude",
-      "source": "./configure-claude",
+      "name": "scaffold",
+      "source": "./scaffold",
       "description": "Scaffolds and maintains a personal Claude Code config space (skills, subagents, hooks, rules, global CLAUDE.md, bootstrap symlinker)."
+    },
+    {
+      "name": "devkit",
+      "source": "./devkit",
+      "description": "Coding toolkit — planning, commit/PR/review/quality skills, code-focused subagents, and auto-format / secret / dangerous-rm safety hooks."
+    },
+    {
+      "name": "obsidian",
+      "source": "./obsidian",
+      "description": "Obsidian vault toolkit — note skills, the vault-librarian subagent, a path-scoped vault rule, and edit-guard / frontmatter / stub hooks."
+    },
+    {
+      "name": "notify",
+      "source": "./notify",
+      "description": "Desktop attention cues — a Stop chime that fires when you've walked away, its idle-tracker, and a macOS notification banner."
+    },
+    {
+      "name": "ralph",
+      "source": "./ralph",
+      "description": "A plugin for setting up a Ralph Wiggum development environment."
     }
   ]
 }

@@ -1,0 +1,18 @@
+{
+  "name": "devkit",
+  "description": "Coding toolkit — planning, commits, PRs, review and quality skills, code-focused subagents, and PreToolUse/PostToolUse safety hooks (auto-format, secret/rm guards).",
+  "version": "0.1.0",
+  "author": {
+    "name": "Markus Johansen"
+  },
+  "keywords": [
+    "coding",
+    "git",
+    "pull-request",
+    "code-review",
+    "quality",
+    "hooks",
+    "subagents"
+  ],
+  "license": "MIT"
+}

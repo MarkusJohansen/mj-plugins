@@ -1,5 +1,5 @@
 {
-  "name": "configure-claude",
+  "name": "scaffold",
   "description": "Scaffolds and maintains a personal Claude Code config space — a versioned repo of skills, subagents, hooks, rules, a global CLAUDE.md and a bootstrap that symlinks it all into ~/.claude.",
   "version": "0.1.0",
   "author": {
