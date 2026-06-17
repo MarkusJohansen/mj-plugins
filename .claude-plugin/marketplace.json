@@ -32,6 +32,11 @@
       "name": "ralph",
       "source": "./ralph",
       "description": "A plugin for setting up a Ralph Wiggum development environment."
+    },
+    {
+      "name": "opsx-orchestrate",
+      "source": "./opsx-orchestrate",
+      "description": "Orchestration over the opsx (OpenSpec) plugin — partition change items into non-overlapping scopes, then fan them out across isolated worktrees as one branch + PR each."
     }
   ]
 }

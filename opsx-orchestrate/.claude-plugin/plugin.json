@@ -1,0 +1,17 @@
+{
+  "name": "opsx-orchestrate",
+  "description": "Orchestration layer over the opsx (OpenSpec) plugin — partition change items into non-overlapping scopes, then fan them out across isolated git worktrees as one branch + one PR each.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Markus Johansen"
+  },
+  "keywords": [
+    "openspec",
+    "opsx",
+    "worktree",
+    "parallel",
+    "pull-request",
+    "orchestration"
+  ],
+  "license": "MIT"
+}
