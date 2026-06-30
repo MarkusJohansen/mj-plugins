@@ -1,6 +1,6 @@
 ---
 name: htmlify
-description: Turn anything from the current conversation — a PR, a finding, a comparison, a plan, a dataset, an explanation — into one self-contained HTML artifact you can open and share. Use when the user says "htmlify", "/htmlify", "make this an HTML page", "turn this into a webpage/report", "render this as HTML", or wants a visual, shareable writeup of something discovered or built. Writes one offline .html file.
+description: Turn anything from the current conversation — a PR, a finding, a comparison, a plan, a dataset, an explanation — into one self-contained HTML artifact you can open and share. Use when the user says "htmlify", "/htmlify", "make this an HTML page", "turn this into a webpage/report", "render this as HTML", "htmlify this in dark mode / dark", or wants a visual, shareable writeup of something discovered or built. Writes one offline .html file; supports a light (default Swiss) or dark palette.
 ---
 
 # htmlify
@@ -91,6 +91,32 @@ The rules that make it Swiss:
 One mental test: strip the accent entirely — if the page still reads as ordered
 and hierarchical from type, grid, and spacing alone, it's built right. Colour is
 there to carry meaning, not to be the scaffolding.
+
+### Dark variant
+
+When the user asks for dark mode ("htmlify this in dark", "/htmlify dark", "make
+it dark"), build exactly as above but swap the `:root` block to the dark palette
+before filling the body — same structure, grid, and one-accent discipline, just a
+near-black canvas. Don't generate light then recolour.
+
+```
+--bg:#0d0d0d;        /* near-black canvas, not pure #000 */
+--ink:#f5f5f5;       /* headings + strong rules */
+--text:#e6e6e6;      /* body — never dim grey on black */
+--text-dim:#a8a8a8;  /* secondary, still legible */
+--text-mute:#7d7d7d; /* captions, metadata */
+--line:#2a2a2a;      /* hairline rules */
+--rule:#f5f5f5;      /* strong structural rules */
+--accent:#3fb950;    /* ONE accent — brighter green reads better on black */
+```
+
+Then fix the few hardcoded light literals in the template that bypass the tokens:
+
+- `code{background:#f4f4f4}` and `pre{background:#f4f4f4 ...}` → `#1a1a1a`
+- `pre .add{color:#1c7a34}` → `#3fb950`; `pre .del{color:#c0392b}` → `#f85149`
+- `a:hover` / `.btn` keep `color:#fff` — white-on-accent still reads.
+
+(Recolouring an already-built light page is the same edit applied after the fact.)
 
 `skills/htmlify/template.html` is a ready-made starting point: the tokens above
 already inlined, plus a 12-column grid and example hero / card / note / table /
