@@ -29,14 +29,14 @@
       "description": "Desktop attention cues — a Stop chime that fires when you've walked away, its idle-tracker, and a macOS notification banner."
     },
     {
-      "name": "ralph",
-      "source": "./ralph",
-      "description": "A plugin for setting up a Ralph Wiggum development environment."
-    },
-    {
       "name": "opsx-orchestrate",
       "source": "./opsx-orchestrate",
       "description": "Orchestration over the opsx (OpenSpec) plugin — partition change items into non-overlapping scopes, then fan them out across isolated worktrees as one branch + PR each."
+    },
+    {
+      "name": "supacode",
+      "source": "./supacode",
+      "description": "Work with the Supacode agent terminal — add, use, and clean up worktrees through the supacode CLI."
     }
   ]
 }
