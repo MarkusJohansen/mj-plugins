@@ -37,6 +37,11 @@
       "name": "supacode",
       "source": "./supacode",
       "description": "Work with the Supacode agent terminal — add, use, and clean up worktrees through the supacode CLI."
+    },
+    {
+      "name": "htmlify",
+      "source": "./htmlify",
+      "description": "Turn anything from the conversation into one self-contained, offline HTML artifact you can open and share."
     }
   ]
 }

@@ -1,0 +1,16 @@
+{
+  "name": "htmlify",
+  "description": "Turn anything from the conversation into one self-contained, offline HTML artifact you can open and share.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Markus Johansen"
+  },
+  "keywords": [
+    "htmlify",
+    "html",
+    "report",
+    "artifact",
+    "visualization"
+  ],
+  "license": "MIT"
+}
