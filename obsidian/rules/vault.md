@@ -20,6 +20,7 @@ When the current path is under the vault, the vault's own `CLAUDE.md` and its "H
 - **Searching the vault** — invoke `/vault-search`. For broad/fuzzy queries it delegates to the `vault-librarian` agent.
 - **Finding unfinished stubs** — invoke `/find-stubs`. Vault-wide audit. The `vault-stub-check.sh` hook also warns at save time when a note's body is under ~40 words.
 - **Pruning low-value notes** — invoke `/cull-vault`. Reports candidates (orphans, abandoned stubs, duplicates, scratch leftovers) with reasons. Never deletes — the user decides.
+- **Shortening a bloated note** — invoke `/compress-note [1-5]` (default 3). Deletion only: whatever survives is word-for-word the user's. Punch-list first, never silent.
 
 For wide reads across many notes (finding related content, duplicates, topic organisation), delegate to the `vault-librarian` agent rather than reading dozens of files in the main session.
 
@@ -35,4 +36,5 @@ Apply these in every vault skill that proposes a `[[wikilink]]`.
 
 - Note creation: `/new-note` → `/link-notes` (propose links from the new note) → `/abstract-note` (if not yet written)
 - Note maintenance: edit → `/tidy-note` → `/link-notes` if structure changed
+- Slimming: `/tidy-note` (structure) → `/compress-note` (content) → `/abstract-note` if the abstract went stale
 - Graph health: `/weave-notes` over a recent batch or topic-scoped set when the graph feels under-connected
