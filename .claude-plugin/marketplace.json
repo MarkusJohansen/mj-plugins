@@ -16,7 +16,7 @@
     {
       "name": "devkit",
       "source": "./devkit",
-      "description": "Coding toolkit — planning, commit/PR/review/quality skills, code-focused subagents, and auto-format / secret / dangerous-rm safety hooks."
+      "description": "Coding toolkit — planning, commit/PR/review/quality/docs skills, code-focused subagents, and auto-format / secret / dangerous-rm safety hooks."
     },
     {
       "name": "obsidian",
