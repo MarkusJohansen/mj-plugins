@@ -23,7 +23,7 @@ ALWAYS RESPOND WITH A MARKDOWN CODE BLOCK USING 4 FENCES.
 
 Before writing the PR, ground yourself in the actual changes:
 
-1. **Check the diff against main** — run `git diff main...HEAD` and read it in full. Do not summarize from memory or assumptions.
+1. **Check the diff against main** — run `bash <skill-dir>/pr-context.sh [base]`: branch, commits, diffstat, then each file's diff capped at 120 lines and 2,500 in total (lockfiles, generated and binary files skipped; files past the budget listed with their +/- counts). Read it in full; run `git diff <base>...HEAD -- <file>` only where a cut-off file could change the PR's story. Do not summarize from memory or assumptions.
 2. **Identify the scope** — how many files changed, what domains are touched, and whether the changes are cohesive or span multiple concerns.
 3. **Note anything surprising** — unintended changes, leftover debug code, files that shouldn't be in this diff, or changes that belong in a separate PR.
 
