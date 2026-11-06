@@ -1,14 +1,14 @@
 ---
 name: htmlify
-description: Turn anything from the current conversation — a PR, a finding, a comparison, a plan, a dataset, an explanation — into one self-contained HTML artifact you can open and share. Use when the user says "htmlify", "/htmlify", "make this an HTML page", "turn this into a webpage/report", "render this as HTML", "htmlify this in dark mode / dark", or wants a visual, shareable writeup of something discovered or built. Writes one offline .html file; supports a light (default Swiss) or dark palette.
+description: Turn anything from the current conversation — a PR, a finding, a comparison, a plan, a dataset, an explanation — into one self-contained HTML page, published as a private claude.ai Artifact with a shareable link. Use when the user says "htmlify", "/htmlify", "make this an HTML page", "turn this into a webpage/report", "render this as HTML", "htmlify this in dark mode / dark", or wants a visual, shareable writeup of something discovered or built. Publishes via the Artifact tool (local .html only when asked); Swiss light palette that follows the system into dark.
 ---
 
 # htmlify
 
 Capture whatever the conversation just produced — a PR's changes, a thing you
 discovered, two approaches compared, a plan, query results — as **one
-self-contained HTML file** (inline CSS/JS, no build step, no external assets) and
-open it. HTML earns its place over markdown when the content has **density,
+self-contained HTML page** (inline CSS/JS, no build step) and publish it as a
+**private Artifact**, handing back the link. HTML earns its place over markdown when the content has **density,
 structure, visuals, or interactivity** that prose can't carry.
 
 ## Steps
@@ -20,10 +20,21 @@ structure, visuals, or interactivity** that prose can't carry.
 2. **Gather grounding.** Pull the real material from the conversation and the
    tools at hand — `git diff`, file contents, query output, the spec/ticket.
    Don't summarise from memory when the source is reachable.
-3. **Write** to `<slug>.html` in the repo root (or the user's chosen dir).
-   Start from `skills/htmlify/template.html` (copy it, fill the body) unless the
-   user wants a different look — see the dark house style below.
-4. **Open it:** `open <file>` (macOS).
+3. **Load `artifact-design`** (the Skill) before writing: it holds the page
+   contract. Write to `<scratchpad>/<slug>.html`, never the repo. Start from
+   `skills/htmlify/template.html` (copy it, fill the body). The `<title>` is a
+   2–4 word name, not "X: explainer".
+4. **Look at it before publishing.** Render a screenshot and read it:
+   `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new
+   --window-size=1200,2400 --screenshot=<file>.png file://<abs path>`; check a
+   390 px wide one too (phone, no sideways scroll). A splice that lands in the
+   wrong place drops the stylesheet silently; only the render shows it.
+5. **Publish** with the Artifact tool (`file_path`, an `icon` word, a one-line
+   `description`); it is private until the user shares it. Give the link. To
+   update, republish the same file path (same URL).
+   - **For a PR:** put the link in the PR description; never attach or commit HTML.
+   - **Only when the user asks for a file** ("give me the .html"): write it where
+     they say and `open` it instead of publishing.
 
 ## What makes HTML worth it (from the "effectiveness of HTML" idea)
 
@@ -36,15 +47,15 @@ Reach for this skill only when at least one applies — otherwise offer markdown
 - **Spatial layout** — side-by-side before/after, comparison columns, tabs.
 - **Interactivity** — sliders/knobs to tune a parameter, a toggle to filter rows,
   collapsible sections. Keep it vanilla JS, inline.
-- **Shareability** — one file opens identically from disk or when emailed.
+- **Shareability** — one link that opens on any device, phone included.
 
 ## Patterns worth keeping (only when they fit)
 
 - **"Copy as" / export buttons.** When the page lets the user edit or pick
   something (reorder, tune, select), add a button that copies the result as text
   or a prompt — bridges the visual artifact back to a text workflow.
-- **Reusable reference.** The file persists; the user can reopen it later to
-  verify against or hand off. Use a stable slug, not a timestamped throwaway.
+- **Reusable reference.** The artifact persists at its URL; republishing the same
+  file updates it in place. Use a stable slug, not a timestamped throwaway.
 
 ## Swiss house style (default skin)
 
@@ -92,31 +103,13 @@ One mental test: strip the accent entirely — if the page still reads as ordere
 and hierarchical from type, grid, and spacing alone, it's built right. Colour is
 there to carry meaning, not to be the scaffolding.
 
-### Dark variant
+### Dark mode
 
-When the user asks for dark mode ("htmlify this in dark", "/htmlify dark", "make
-it dark"), build exactly as above but swap the `:root` block to the dark palette
-before filling the body — same structure, grid, and one-accent discipline, just a
-near-black canvas. Don't generate light then recolour.
-
-```
---bg:#0d0d0d;        /* near-black canvas, not pure #000 */
---ink:#f5f5f5;       /* headings + strong rules */
---text:#e6e6e6;      /* body — never dim grey on black */
---text-dim:#a8a8a8;  /* secondary, still legible */
---text-mute:#7d7d7d; /* captions, metadata */
---line:#2a2a2a;      /* hairline rules */
---rule:#f5f5f5;      /* strong structural rules */
---accent:#3fb950;    /* ONE accent — brighter green reads better on black */
-```
-
-Then fix the few hardcoded light literals in the template that bypass the tokens:
-
-- `code{background:#f4f4f4}` and `pre{background:#f4f4f4 ...}` → `#1a1a1a`
-- `pre .add{color:#1c7a34}` → `#3fb950`; `pre .del{color:#c0392b}` → `#f85149`
-- `a:hover` / `.btn` keep `color:#fff` — white-on-accent still reads.
-
-(Recolouring an already-built light page is the same edit applied after the fact.)
+The template's tokens already switch to a near-black palette under
+`prefers-color-scheme: dark` (guarded by `:root:not([data-theme="light"])`, and
+again under `:root[data-theme="dark"]`). For "htmlify this in dark", add
+`data-theme="dark"` to `<html>`; don't recolour by hand. New colours go in as
+tokens in all three blocks, never as literals in rules.
 
 `skills/htmlify/template.html` is a ready-made starting point: the tokens above
 already inlined, plus a 12-column grid and example hero / card / note / table /
@@ -127,12 +120,14 @@ time. (Recolour by editing the `:root` tokens; keep it to one accent.)
 
 ## Rules
 
-- **One file, fully offline.** No CDNs, no `<script src>`, no web fonts — it must
-  render the same emailed as on disk. Inline everything.
+- **One page, inline.** Inline CSS/JS. A library only when it earns it, from
+  cdnjs.cloudflare.com (or the other CDNs `artifact-design` allows) at an exact,
+  pinned version; no web fonts beyond Google Fonts.
 - **Ground every claim.** Trace to the diff, a file, a spec, or query output. If
   the "why" isn't evidenced, leave it out rather than invent it.
 - **Excerpt, don't dump.** Show the line/row that matters, not whole files.
 - **Earn the format.** Pure linear prose with nothing visual or interactive isn't
   an HTML candidate — say so and offer a markdown summary instead.
-- **Local artifact only.** Never commit it or post it anywhere unless asked.
+- **Private, never committed.** Publish privately; never commit the HTML or post
+  the link anywhere unless asked.
 - **Restrained styling.** Readable beats flashy; the content is the point.

@@ -1,9 +1,10 @@
 <!doctype html>
 <!-- htmlify Swiss template (International Typographic Style). Copy this whole
-     file, then replace the body content between <!--CONTENT START--> and
-     <!--CONTENT END-->. Delete components you don't use — every element must
-     earn its place. One self-contained file: no CDNs, no <script src>, no web
-     fonts, and — Swiss discipline — no gradients, shadows, or rounded corners. -->
+     file, then replace the body content between the two content markers
+     inside <body>. Delete components you don't use; every element
+     must earn its place. One self-contained file: no external scripts or web fonts, and (Swiss discipline) no gradients, shadows, or rounded
+     corners. Never write a comment opener or closer inside this comment: HTML
+     comments do not nest, and the first closer ends the comment. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -18,8 +19,18 @@
   --line:#e3e3e3;      /* hairline rules */
   --rule:#111111;      /* strong structural rules */
   --accent:#28a745;    /* ONE accent — used only to carry meaning */
+  --code-bg:#f4f4f4; --add:#1c7a34; --del:#c0392b;
   /* type scale ~1.333: 13 / 17 / 23 / 30 / 40 / 64 */
   /* spacing scale: 4 8 16 24 32 48 64 — only these values */
+}
+/* dark: follows the system unless the page is pinned with data-theme */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d0d0d; --ink:#f5f5f5; --text:#e6e6e6; --text-dim:#a8a8a8; --text-mute:#7d7d7d;
+  --line:#2a2a2a; --rule:#f5f5f5; --accent:#3fb950; --code-bg:#1a1a1a; --add:#3fb950; --del:#f85149;
+}}
+:root[data-theme="dark"]{
+  --bg:#0d0d0d; --ink:#f5f5f5; --text:#e6e6e6; --text-dim:#a8a8a8; --text-mute:#7d7d7d;
+  --line:#2a2a2a; --rule:#f5f5f5; --accent:#3fb950; --code-bg:#1a1a1a; --add:#3fb950; --del:#f85149;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);
@@ -55,9 +66,9 @@ hr{border:0;border-top:1px solid var(--line);margin:48px 0}
 .note{border-left:3px solid var(--accent);padding:8px 0 8px 24px;margin:24px 0;color:var(--text-dim)}
 
 code,pre{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:14px}
-code{background:#f4f4f4;padding:1px 6px}
-pre{background:#f4f4f4;border-left:3px solid var(--rule);padding:16px 24px;overflow:auto;line-height:1.55;color:var(--ink)}
-pre .add{color:#1c7a34} pre .del{color:#c0392b} pre .ctx{color:var(--text-mute)}
+code{background:var(--code-bg);padding:1px 6px}
+pre{background:var(--code-bg);border-left:3px solid var(--rule);padding:16px 24px;overflow:auto;line-height:1.55;color:var(--ink)}
+pre .add{color:var(--add)} pre .del{color:var(--del)} pre .ctx{color:var(--text-mute)}
 
 /* table — hairline rules only, no zebra fills */
 table{width:100%;border-collapse:collapse;margin:24px 0;font-size:15px}
