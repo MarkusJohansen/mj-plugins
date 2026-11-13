@@ -1,9 +1,9 @@
 ---
-name: resolve-pr-comments
+name: resolve
 description: Work through unresolved review comments on a GitHub pull request via the gh CLI — fetch each thread, address it in code or with a reply, and mark it resolved. Use when the user says "resolve PR comments", "address review feedback", "work through the review on PR #N", or "respond to reviewer comments".
 ---
 
-# resolve-pr-comments
+# resolve
 
 You are working through reviewer feedback on a GitHub PR. Each unresolved thread either becomes a code change, a reply explaining why no change is needed, or a follow-up note — never silently ignored.
 
