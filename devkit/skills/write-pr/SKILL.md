@@ -31,6 +31,17 @@ Only begin writing the PR after completing this step.
 
 ---
 
+## Shape check
+
+A good PR is one a reviewer can fully verify in one sitting. A good description cannot rescue a badly shaped diff, so check the shape before writing, and if it fails, tell the author and propose a split instead of describing it.
+
+- **One purpose.** A refactor (code moves, renames) and a behaviour change in one diff hide which lines change logic. Propose the refactor as its own PR first.
+- **Size.** Aim for ~400 changed lines (lockfiles, generated files and fixtures excluded), 800 at most. Reviewers find fewer defects per line past ~200-400 lines or ~60-90 minutes per session (SmartBear/Cisco study of 2,500 reviews). The number is a rule of thumb; the mechanism is attention running out.
+- **Reviewable alone.** A PR split by layer (models, then routes, then UI) can't be judged without the others. Split by vertical slice instead: each PR works end to end, with a feature flag if the slice isn't ready to show.
+- **Evidence.** Prefer a test that fails without the change, before/after screenshots for UI, or before/after numbers for a performance claim over "tests pass". Put it in Testing Notes.
+
+---
+
 ## Title
 
 Format: `[type][Domain] Summarizing title`
