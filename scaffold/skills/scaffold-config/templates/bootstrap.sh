@@ -286,7 +286,8 @@ main() {
   done
 
   case "$subcmd" in
-    bundle) cmd_bundle "${args[@]}"; exit 0 ;;
+    # ${args[@]+...}: bash 3.2 (macOS) treats an empty array as unset under `set -u`.
+    bundle) cmd_bundle ${args[@]+"${args[@]}"}; exit 0 ;;
     validate) validate; exit 0 ;;
   esac
 
