@@ -6,11 +6,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-dangerous-rm.sh\""
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/block-dangerous-rm.py\"",
+            "timeout": 5
           },
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secrets.sh\""
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secrets.py\"",
+            "timeout": 15
           }
         ]
       }

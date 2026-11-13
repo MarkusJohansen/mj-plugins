@@ -1,145 +1,207 @@
 #!/usr/bin/env bash
-# Tiny test harness for hooks/. Feeds canned PreToolUse JSON payloads to a hook
-# script and asserts the exit code.
-#
-# block-dangerous-rm.sh is covered here.
-# block-secrets.sh is intentionally NOT covered — it shells out to `git diff
-# --cached` against the caller's cwd, so testing it in isolation requires
-# building a temp git repo with a staged diff. The shape of its patterns can
-# still be eyeballed in the script itself.
+# Tests for the devkit hooks. Each case feeds a hook event on stdin and checks the exit
+# code (0 = allow, 2 = block) or the file the hook left behind.
 #
 # Run:   hooks/tests/run.sh
 # Exit:  0 if all assertions pass, 1 otherwise.
 
 set -u
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-HOOK="${REPO}/hooks/block-dangerous-rm.sh"
-
+HOOKS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SANDBOX=$(mktemp -d)
+trap 'rm -rf "$SANDBOX"' EXIT
 pass=0
 fail=0
 
-assert_exit() {
-  local name="$1" cmd="$2" expect="$3"
-  local payload actual
-  payload=$(jq -n --arg cmd "$cmd" '{tool_input: {command: $cmd}}')
-  printf '%s' "$payload" | "$HOOK" >/dev/null 2>&1
-  actual=$?
-  if [[ "$actual" == "$expect" ]]; then
-    printf '  PASS  %s\n' "$name"
+check() {
+  local name="$1" expected="$2" actual="$3"
+  if [[ "$actual" == "$expected" ]]; then
     pass=$((pass + 1))
   else
-    printf '  FAIL  %s — expected exit %s, got %s (cmd: %s)\n' "$name" "$expect" "$actual" "$cmd"
+    printf '  FAIL  %s: expected %s, got %s\n' "$name" "$expected" "$actual"
     fail=$((fail + 1))
   fi
 }
 
-echo "block-dangerous-rm.sh:"
-# Block cases (exit 2).
-assert_exit "rm -rf /"             "rm -rf /"             2
-assert_exit "rm -rf ~"             "rm -rf ~"             2
-assert_exit "rm -rf ~/"            "rm -rf ~/"            2
-assert_exit "rm -rf .."            "rm -rf .."            2
-assert_exit "rm -rf ../foo"        "rm -rf ../foo"        2
-assert_exit "rm -rf /Users"        "rm -rf /Users"        2
-assert_exit "rm -rf /Users/me"     "rm -rf /Users/me"     2
-assert_exit "rm -rf \$HOME"        "rm -rf \$HOME"        2
-assert_exit "rm -rf \$HOME/x"      "rm -rf \$HOME/x"      2
+echo "block-dangerous-rm.py:"
+FAKE_HOME=/Users/tester
+WORK_DIR="$FAKE_HOME/project"
 
-# Allow cases (exit 0).
-assert_exit "rm -rf foo"           "rm -rf foo"           0
-assert_exit "rm -rf ./build"       "rm -rf ./build"       0
-assert_exit "rm file (no -r)"      "rm file"              0
-assert_exit "ls -la (not rm)"      "ls -la"               0
-assert_exit "rm -i interactive"    "rm -i foo.txt"        0
-
-
-echo
-echo "block-secrets.sh:"
-SECRETS_HOOK="${REPO}/hooks/block-secrets.sh"
-TMP_REPO=$(mktemp -d)
-(
-  cd "$TMP_REPO"
-  git init -q
-  git -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
-)
-
-assert_secrets_exit() {
-  local name="$1" cmd="$2" file_content="$3" expect="$4" actual
-  ( cd "$TMP_REPO" && git reset -q --hard HEAD && rm -f leak.txt removal.txt )
-  if [[ -n "$file_content" ]]; then
-    printf '%s\n' "$file_content" > "$TMP_REPO/leak.txt"
-    ( cd "$TMP_REPO" && git add leak.txt )
-  fi
-  local payload
-  payload=$(jq -n --arg cmd "$cmd" --arg cwd "$TMP_REPO" \
-    '{tool_input: {command: $cmd, cwd: $cwd}}')
-  printf '%s' "$payload" | "$SECRETS_HOOK" >/dev/null 2>&1
-  actual=$?
-  if [[ "$actual" == "$expect" ]]; then
-    printf '  PASS  %s\n' "$name"
-    pass=$((pass + 1))
-  else
-    printf '  FAIL  %s — expected exit %s, got %s\n' "$name" "$expect" "$actual"
-    fail=$((fail + 1))
-  fi
+rm_exit() {
+  local command="$1" cwd="${2:-$WORK_DIR}"
+  jq -n --arg command "$command" --arg cwd "$cwd" '{cwd: $cwd, tool_input: {command: $command}}' \
+    | env -u UNSET_BUILD_DIR HOME="$FAKE_HOME" python3 "$HOOKS/block-dangerous-rm.py" >/dev/null 2>&1
+  echo $?
 }
 
-# Fake secrets are split across adjacent shell strings so the source file
-# itself does not match block-secrets.sh's patterns. They concatenate at
-# runtime back into the full pattern the regex expects.
-# Block cases.
-assert_secrets_exit "AWS key in diff"     "git commit -m x" "aws_key=""AKIA""IOSFODNN7EXAMPLE"  2
-assert_secrets_exit "GitHub PAT in diff"  "git commit -m x" "token=""ghp_""1234567890123456789012345678901234567890" 2
-assert_secrets_exit "private key header"  "git commit -m x" "-----BEGIN RSA ""PRIVATE KEY-----" 2
-assert_secrets_exit "Anthropic key"       "git commit -m x" "sk-ant-""abcdefghijklmnopqrstuv"   2
+while IFS= read -r command; do
+  [[ -n "$command" ]] && check "blocks: $command" 2 "$(rm_exit "$command")"
+done <<'BLOCKED'
+rm -rf /
+rm -rf ~
+rm -rf ~/
+rm -rf ..
+rm -rf ../foo
+rm -rf /Users
+rm -rf /Users/me
+rm -rf $HOME
+rm -rf $HOME/x
+rm -rf "$HOME"
+rm -rf '/'
+rm -rf build ~
+rm -rf ./build /
+rm --recursive /etc
+rm -r -f /usr
+rm -fr /tmp
+rm -rf -- /
+sudo rm -rf /
+rm -rf ~/*
+rm -rf ~/Documents
+rm -rf ~/Documents/*
+rm -rf "$UNSET_BUILD_DIR/"
+rm -rf $UNSET_BUILD_DIR/*
+cd / && rm -rf etc
+echo cleaning; rm -rf ~
+ls $(rm -rf ~)
+BLOCKED
+check "blocks: rm on a later line" 2 "$(rm_exit $'echo start\nrm -rf ~')"
+check "blocks: a relative path from the home directory" 2 "$(rm_exit 'rm -rf Documents' "$FAKE_HOME")"
 
-# Allow cases.
-assert_secrets_exit "clean diff"          "git commit -m x" "hello world"                       0
-assert_secrets_exit "non-commit command"  "git status"      "aws_key=""AKIA""IOSFODNN7EXAMPLE"  0
-assert_secrets_exit "commit with no staged" "git commit -m x" ""                                0
+while IFS= read -r command; do
+  [[ -n "$command" ]] && check "allows: $command" 0 "$(rm_exit "$command")"
+done <<'ALLOWED'
+rm -rf foo
+rm -rf ./build
+rm file
+ls -la
+rm -i foo.txt
+rm -rf /Users/tester/project/build
+rm -rf ~/project/node_modules
+rm -rf /tmp/scratch-123
+rm -rf "${UNSET_BUILD_DIR:?}/"
+rm -rf "$UNSET_BUILD_DIR"
+rm -rf *.pyc
+rm -rf build/*
+for dir in api web; do rm -rf "$dir/node_modules"; done
+tmp=$(mktemp -d); make -C "$tmp"; rm -rf "$tmp"/*
+while read -r name; do rm -rf "$name/cache"; done < packages.txt
+git commit -m "rm -rf / is how you lose a disk"
+grep -rn "rm -rf" docs
+ALLOWED
 
-# Removing a line that contains a secret-shaped string must NOT block — you
-# can't leak a secret by deleting it. Set up a baseline commit that contains
-# the secret, then stage a removal.
-( cd "$TMP_REPO" && git reset -q --hard HEAD && rm -f leak.txt
-  printf 'aws_key=%s%s\n' "AKIA" "IOSFODNN7EXAMPLE" > removal.txt
-  git add removal.txt && git -c user.email=t@t -c user.name=t commit -q -m base
-  git rm -q removal.txt )
-payload=$(jq -n --arg cmd "git commit -m x" --arg cwd "$TMP_REPO" \
-  '{tool_input: {command: $cmd, cwd: $cwd}}')
-printf '%s' "$payload" | "$SECRETS_HOOK" >/dev/null 2>&1
-actual=$?
-if [[ "$actual" == 0 ]]; then
-  printf '  PASS  %s\n' "removal of secret line is allowed"
-  pass=$((pass + 1))
-else
-  printf '  FAIL  removal of secret line — expected exit 0, got %s\n' "$actual"
-  fail=$((fail + 1))
-fi
+echo "block-secrets.py:"
+REPO="$SANDBOX/repo"
+OTHER_DIR="$SANDBOX/elsewhere"
+mkdir -p "$REPO" "$OTHER_DIR"
+commit_as_tester() { git -C "$REPO" -c user.email=t@t -c user.name=t commit -q "$@"; }
+git -C "$REPO" init -q
+printf 'tracked\n' > "$REPO/tracked.txt"
+git -C "$REPO" add tracked.txt
+commit_as_tester -m init
 
-rm -rf "$TMP_REPO"
+# Fake secrets are split across adjacent strings so this file does not match the patterns.
+AWS_KEY="AKIA""IOSFODNN7EXAMPLE"
+GITHUB_TOKEN="ghp_""1234567890123456789012345678901234567890"
+ANTHROPIC_KEY="sk-ant-""abcdefghijklmnopqrstuv"
+OPENAI_PROJECT_KEY="sk-proj-""abcdefghijklmnopqrstuvwxyz012345"
+PRIVATE_KEY_HEADER="-----BEGIN RSA ""PRIVATE KEY-----"
 
+reset_repo() {
+  git -C "$REPO" reset -q --hard HEAD
+  git -C "$REPO" clean -qfd
+}
+
+stage() {
+  reset_repo
+  printf '%s\n' "$1" > "$REPO/leak.txt"
+  git -C "$REPO" add leak.txt
+}
+
+secrets_exit() {
+  local command="$1" cwd="${2:-$REPO}"
+  jq -n --arg command "$command" --arg cwd "$cwd" '{cwd: $cwd, tool_input: {command: $command}}' \
+    | python3 "$HOOKS/block-secrets.py" 2>"$SANDBOX/stderr" >/dev/null
+  echo $?
+}
+
+stage "aws_key=$AWS_KEY"
+check "AWS key in the staged diff" 2 "$(secrets_exit 'git commit -m x')"
+check "the report names the file" 1 "$(grep -c 'leak.txt: AWS access key id' "$SANDBOX/stderr")"
+check "the report never repeats the secret" 0 "$(grep -c "$AWS_KEY" "$SANDBOX/stderr")"
+check "a non-commit command passes" 0 "$(secrets_exit 'git status')"
+check "a commit reached through cd is scanned in that repo" 2 \
+  "$(secrets_exit "cd $REPO && git commit -m x" "$OTHER_DIR")"
+check "a commit reached through git -C is scanned in that repo" 2 \
+  "$(secrets_exit "git -C $REPO commit -m x" "$OTHER_DIR")"
+check "a commit in another repo is not blamed for this one" 0 \
+  "$(secrets_exit 'git commit -m x' "$OTHER_DIR")"
+
+stage "token=$GITHUB_TOKEN"
+check "GitHub token" 2 "$(secrets_exit 'git commit -m x')"
+stage "$PRIVATE_KEY_HEADER"
+check "private key header" 2 "$(secrets_exit 'git commit -m x')"
+stage "$ANTHROPIC_KEY"
+check "Anthropic key" 2 "$(secrets_exit 'git commit -m x')"
+stage "OPENAI_API_KEY=$OPENAI_PROJECT_KEY"
+check "OpenAI project key" 2 "$(secrets_exit 'git commit -m x')"
+
+stage "hello world"
+check "a clean diff passes" 0 "$(secrets_exit 'git commit -m x')"
+stage "aws_secret_access_key = os.environ['AWS_SECRET_ACCESS_KEY']"
+check "reading a secret from the environment passes" 0 "$(secrets_exit 'git commit -m x')"
+stage "fixture = '$AWS_KEY'  # pragma: allowlist secret"
+check "an allowlisted fixture line passes" 0 "$(secrets_exit 'git commit -m x')"
+reset_repo
+check "a commit with nothing staged passes" 0 "$(secrets_exit 'git commit -m x')"
+
+reset_repo
+printf 'aws_key=%s\n' "$AWS_KEY" >> "$REPO/tracked.txt"
+check "an unstaged secret is ignored by a plain commit" 0 "$(secrets_exit 'git commit -m x')"
+check "git commit -a scans unstaged changes" 2 "$(secrets_exit 'git commit -am x')"
+check "git commit --all scans unstaged changes" 2 "$(secrets_exit 'git commit --all -m x')"
+
+# The hook runs before the command, so `git add x && git commit` has nothing staged yet.
+check "git add of a changed file, then commit, is scanned" 2 \
+  "$(secrets_exit 'git add tracked.txt && git commit -m x')"
+reset_repo
+printf 'aws_key=%s\n' "$AWS_KEY" > "$REPO/new-file.txt"
+check "an untracked secret is ignored by a plain commit" 0 "$(secrets_exit 'git commit -m x')"
+check "git add of a new file, then commit, is scanned" 2 \
+  "$(secrets_exit 'git add new-file.txt && git commit -m x')"
+check "the report names the new file" 1 "$(grep -c 'new-file.txt: AWS access key id' "$SANDBOX/stderr")"
+check "git add . then commit is scanned" 2 "$(secrets_exit 'git add . && git commit -m x')"
+check "git add -A then commit is scanned" 2 "$(secrets_exit 'git add -A && git commit -m x')"
+check "adding one file does not blame another that stays untracked" 0 \
+  "$(secrets_exit 'git add tracked.txt && git commit -m x')"
+reset_repo
+printf 'aws_key=%s\n' "$AWS_KEY" >> "$REPO/tracked.txt"
+
+# Removing a line that holds a secret cannot leak it.
+git -C "$REPO" add tracked.txt
+commit_as_tester -m "base with a secret" --no-verify
+printf 'tracked\n' > "$REPO/tracked.txt"
+git -C "$REPO" add tracked.txt
+check "removing a secret line passes" 0 "$(secrets_exit 'git commit -m x')"
+
+echo "auto-format.sh:"
 # auto-format only touches files in projects that declare the formatter.
-assert_formatted() {
-  local name="$1" config="$2" expect="$3" repo
-  repo=$(mktemp -d)
-  mkdir -p "$repo/.git"
-  [[ -n "$config" ]] && printf '%b' "$config" > "$repo/pyproject.toml"
-  printf 'x = {  "a":1 }\n' > "$repo/sample.py"
-  jq -n --arg path "$repo/sample.py" '{tool_name: "Edit", tool_input: {file_path: $path}}' \
-    | bash "${REPO}/hooks/auto-format.sh"
-  if [[ "$(cat "$repo/sample.py")" == "$expect" ]]; then
-    printf '  PASS  %s\n' "$name"; pass=$((pass + 1))
-  else
-    printf '  FAIL  %s — got: %s\n' "$name" "$(cat "$repo/sample.py")"; fail=$((fail + 1))
-  fi
-  rm -rf "$repo"
+formatted() {
+  local config="$1" project
+  project=$(mktemp -d "$SANDBOX/format.XXXXXX")
+  mkdir -p "$project/.git"
+  [[ -n "$config" ]] && printf '%b' "$config" > "$project/pyproject.toml"
+  printf 'x = {  "a":1 }\n' > "$project/sample.py"
+  jq -n --arg path "$project/sample.py" '{tool_name: "Edit", tool_input: {file_path: $path}}' \
+    | bash "$HOOKS/auto-format.sh"
+  cat "$project/sample.py"
 }
 
 if command -v ruff >/dev/null; then
-  assert_formatted "ruff runs in a project that configures it" '[tool.ruff]\nline-length = 100\n' 'x = {"a": 1}'
-  assert_formatted "ruff leaves a project without ruff config alone" '' 'x = {  "a":1 }'
+  check "ruff runs in a project that configures it" 'x = {"a": 1}' \
+    "$(formatted '[tool.ruff]\nline-length = 100\n')"
+  check "ruff leaves a project without ruff config alone" 'x = {  "a":1 }' "$(formatted '')"
+else
+  echo "  SKIP  auto-format cases: ruff is not on PATH"
 fi
 
 echo
