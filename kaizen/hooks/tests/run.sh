@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for the shell-habits and name-guard hooks. Each case feeds a hook event on stdin.
+# Tests for the kaizen hooks and the verify helper. Each hook case feeds an event on stdin.
 set -u
 
 HOOKS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -68,6 +68,94 @@ check "a commit inside a root is allowed" allow \
 check "Claude's own folders for a root are allowed" allow "$(guard_decision Write /tmp "$claude_folder")"
 check "the guard denies, not just a broken input" deny \
   "$(guard_decision Write /tmp "$(jq -nc '{file_path: "/tmp/x.md", content: "Acme"}')")"
+
+PERSONAL="$SANDBOX/personal"
+mkdir -p "$PERSONAL"
+check "a commit elsewhere through cd, started inside a root, is denied" deny \
+  "$(guard_decision Bash "$WORK" "{\"command\":\"cd $PERSONAL && git commit -m 'port the Acme parser'\"}")"
+check "a commit elsewhere through git -C, started inside a root, is denied" deny \
+  "$(guard_decision Bash "$WORK" "{\"command\":\"git -C $PERSONAL commit -m 'Acme parser'\"}")"
+check "git -C does not hide a commit from the guard" deny \
+  "$(guard_decision Bash /tmp "{\"command\":\"git -C $PERSONAL commit -m 'Acme parser'\"}")"
+check "a file written elsewhere from inside a root is denied" deny \
+  "$(guard_decision Bash "$WORK" "{\"command\":\"echo 'Acme plan' > $PERSONAL/notes.md\"}")"
+check "a commit inside a root that silences stderr is allowed" allow \
+  "$(guard_decision Bash "$WORK" '{"command":"git commit -m \"Acme fix\" 2>/dev/null"}')"
+check "a log sent to a temp file from inside a root is allowed" allow \
+  "$(guard_decision Bash "$WORK" '{"command":"echo \"Acme run\" > /tmp/kaizen-test.log"}')"
+check "a cd that stays inside the root is allowed" allow \
+  "$(guard_decision Bash "$WORK" "{\"command\":\"cd $WORK/sub && git commit -m 'Acme fix'\"}")"
+check "reading a term with stderr silenced is not a write" allow \
+  "$(guard_decision Bash /tmp '{"command":"grep -c Acme notes.md 2>/dev/null"}')"
+
+lesson_decision() {
+  local session="$1" transcript="$2"
+  jq -n --arg session "$session" --arg transcript "$transcript" '{session_id: $session, transcript_path: $transcript}' \
+    | python3 "$HOOKS/lesson-check.py" | jq -rs '.[0].decision // "allow"'
+}
+
+CORRECTED="$SANDBOX/corrected.jsonl"
+LEARNED="$SANDBOX/learned.jsonl"
+cat > "$CORRECTED" <<'TRANSCRIPT'
+{"type":"user","message":{"role":"user","content":"add a retry to the fetch"}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/repo/fetch.py"}}]}}
+{"type":"user","message":{"role":"user","content":"no, use the shared retry helper"}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/repo/fetch.py"}}]}}
+TRANSCRIPT
+cp "$CORRECTED" "$LEARNED"
+echo '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/repo/.claude/skills/fetch/SKILL.md"}}]}}' >> "$LEARNED"
+echo 'not json at all' > "$SANDBOX/garbage.jsonl"
+mkdir -p "$SANDBOX/.claude/lesson-check"
+touch -t 202001010000 "$SANDBOX/.claude/lesson-check/long-gone-session"
+
+check "a correction with no lesson written blocks the stop" block "$(lesson_decision l1 "$CORRECTED")"
+check "the stop is blocked once per session" allow "$(lesson_decision l1 "$CORRECTED")"
+check "a lesson written after the correction lets Claude stop" allow "$(lesson_decision l2 "$LEARNED")"
+check "an unreadable transcript lets Claude stop" allow "$(lesson_decision l3 "$SANDBOX/garbage.jsonl")"
+check "a missing transcript lets Claude stop" allow "$(lesson_decision l4 "$SANDBOX/none.jsonl")"
+check "markers of long-finished sessions are pruned" 0 "$(find "$SANDBOX/.claude/lesson-check" -name long-gone-session | wc -l | tr -d ' ')"
+
+touch -t 202001010000 "$SANDBOX/.claude/shell-habits/old-session.hand-verify"
+habit_decision s10 'cat CLAUDE.md' >/dev/null
+check "shell-habits prunes markers of long-finished sessions" 0 "$(find "$SANDBOX/.claude/shell-habits" -name 'old-session.*' | wc -l | tr -d ' ')"
+check "shell-habits keeps its hit log" 1 "$(find "$SANDBOX/.claude/shell-habits" -name hits.jsonl | wc -l | tr -d ' ')"
+
+echo 'half-written line' >> "$SANDBOX/.claude/shell-habits/hits.jsonl"
+mkdir -p "$SANDBOX/.claude/projects"
+check "shell-patterns survives a corrupt hit log" true \
+  "$(python3 "$HOOKS/../scripts/shell-patterns.py" --days 7 | jq '.habit_hits | length > 0')"
+
+VERIFY="$HOOKS/../scripts/verify"
+PROJECT="$SANDBOX/project"
+mkdir -p "$PROJECT/tool/tests"
+git -C "$PROJECT" init -q
+printf '#!/usr/bin/env bash\necho fine\n' > "$PROJECT/tool/good.sh"
+printf '#!/usr/bin/env bash\necho suite-ran\n' > "$PROJECT/tool/tests/run.sh"
+git -C "$PROJECT" add .
+git -C "$PROJECT" -c user.email=t@t -c user.name=t commit -q -m init
+
+verify_output() { (cd "$PROJECT" && python3 "$VERIFY" "$@" 2>&1; echo "exit=$?"); }
+
+check "verify has nothing to do on a clean tree" 1 "$(verify_output | grep -c 'no changed')"
+check "verify takes a directory and checks a clean tree" 1 "$(verify_output tool | grep -c 'ok    tool/tests/run.sh')"
+check "verify --no-tests skips the script suite" 0 "$(verify_output --no-tests tool | grep -c 'tests/run.sh')"
+if command -v ruff >/dev/null; then
+  printf 'x = {  "a":1 }\n' > "$PROJECT/tool/unformatted.py"
+  git -C "$PROJECT" add tool/unformatted.py
+  git -C "$PROJECT" -c user.email=t@t -c user.name=t commit -q -m "add an unformatted file"
+  verify_output --no-tests tool >/dev/null
+  check "verify on a directory reports and does not reformat" 'x = {  "a":1 }' "$(cat "$PROJECT/tool/unformatted.py")"
+  printf '\n' >> "$PROJECT/tool/unformatted.py"
+  verify_output --no-tests >/dev/null
+  check "verify on a changed file formats it" 'x = {"a": 1}' "$(cat "$PROJECT/tool/unformatted.py")"
+  git -C "$PROJECT" checkout -q -- tool/unformatted.py
+fi
+printf 'if then\n' > "$PROJECT/tool/broken.sh"
+check "verify picks up an untracked shell file and fails on a syntax error" 1 "$(verify_output | grep -c 'FAIL  bash -n broken.sh')"
+check "verify exits non-zero when a step fails" 1 "$(verify_output | grep -c 'exit=1')"
+rm "$PROJECT/tool/broken.sh"
+printf '#!/usr/bin/env bash\necho assertion failed; exit 1\n' > "$PROJECT/tool/tests/run.sh"
+check "verify reports a failing script suite" 1 "$(verify_output | grep -c 'FAIL  tool/tests/run.sh')"
 
 echo "$passed passed, $failed failed"
 (( failed == 0 ))

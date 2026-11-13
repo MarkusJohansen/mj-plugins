@@ -31,7 +31,7 @@ What the JSON holds:
 ## 2. Read the context the miner can't judge
 
 - `~/.claude/CLAUDE.md` (the user's global rules) — compare what it *asks*
-  for (e.g. `/plan`, `/checklist`, OpenSpec, codebase-memory MCP first) with
+  for (e.g. `/plan-first`, `/checklist`, OpenSpec, codebase-memory MCP first) with
   what `usage` shows actually happens. Rule-vs-behaviour drift is the most
   valuable finding.
 - Memory files flagged in `memory.projects[].items` as `feedback` — repeated

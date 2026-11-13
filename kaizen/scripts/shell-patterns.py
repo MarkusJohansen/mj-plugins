@@ -112,10 +112,14 @@ def main():
     habit_hits = collections.Counter()
     if HABIT_HITS.exists():
         cutoff = time.time() - options.days * 86400
-        for line in open(HABIT_HITS):
-            hit = json.loads(line)
-            if hit["ts"] >= cutoff:
-                habit_hits[f"{hit['rule']}:{hit.get('outcome') or ('denied' if hit['denied'] else 'later')}"] += 1
+        for line in open(HABIT_HITS, errors="replace"):
+            try:
+                hit = json.loads(line)
+            except json.JSONDecodeError:  # a half-written line must not sink the weekly run
+                continue
+            if hit.get("ts", 0) >= cutoff and "rule" in hit:
+                outcome = hit.get("outcome") or ("denied" if hit.get("denied") else "later")
+                habit_hits[f"{hit['rule']}:{outcome}"] += 1
 
     report = {
         "days": options.days,

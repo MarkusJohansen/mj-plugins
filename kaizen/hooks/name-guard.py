@@ -6,8 +6,9 @@ Reads ~/.claude/private-terms.json (never committed; see private-terms.example.j
 Denies, every time:
 - Write / Edit / MultiEdit / NotebookEdit of a file outside the allowed roots whose new text
   names a term;
-- Bash run outside the allowed roots that commits, talks to GitHub or the network, or writes a
-  file (redirect, tee, sed -i) with a term in the command;
+- Bash that commits, talks to GitHub or the network, or writes a file (redirect, tee, sed -i)
+  with a term in the command, when it runs outside the allowed roots or reaches out of one
+  (`cd`, `git -C`, a redirect or tee to somewhere else under the home directory);
 - Artifact publishes and web searches started outside the allowed roots that name a term.
 Paths under an allowed root, and Claude's own per-project folders for them, don't count.
 No config file -> no-op. Any error -> exit 0 (fails open).
@@ -20,8 +21,17 @@ import sys
 from pathlib import Path
 
 CONFIG = Path.home() / ".claude" / "private-terms.json"
+SHELL_WORD = r"(\"[^\"]*\"|'[^']*'|[^\s;&|()<>]+)"
 OUTWARD_BASH = re.compile(
-    r"\bgit\s+(commit|tag|notes|push)\b|\bgh\s|\bcurl\s|\bwget\s|\btee\s|\bsed\s+-i|>\s*[^&\s]|<<"
+    # git, any global options (-C dir, -c key=value, --flag), then a subcommand that publishes.
+    rf"\bgit\b(?:\s+-[cC]\s+{SHELL_WORD}|\s+--[\w-]+(?:=\S+)?)*\s+(commit|tag|notes|push)\b"
+    r"|\bgh\s|\bcurl\s|\bwget\s|\btee\s|\bsed\s+-i|<<"
+    # A redirect to a file. `2>/dev/null` and `2>&1` write nothing.
+    r"|>+\s*(?!/dev/null\b)[^&\s>]"
+)
+# Where a command acts: the target of a cd, a git -C, a tee or a redirect.
+DESTINATION = re.compile(
+    rf"(?:(?:(?:^|[;&|(\n]\s*)cd|\bgit\s+-C|\btee(?:\s+-a)?)\s+|>+\s*){SHELL_WORD}"
 )
 EDIT_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
 
@@ -49,6 +59,25 @@ def under_allowed_root(path, roots):
         for candidate in candidates
         for root in roots
     )
+
+
+def reaches_outside(command, cwd, roots):
+    """True when a command started inside an allowed root acts elsewhere under the home directory.
+
+    Temp and system paths don't count: a log sent to /tmp or /dev/null publishes nothing.
+    """
+    home = str(Path.home())
+    directory = cwd
+    for match in DESTINATION.finditer(command):
+        word = match.group(1).strip("'\"").replace("${HOME}", home).replace("$HOME", home)
+        if "$" in word:
+            continue
+        path = os.path.normpath(os.path.join(directory, os.path.expanduser(word)))
+        if match.group(0).lstrip(";&|(\n \t").startswith("cd"):
+            directory = path
+        if (path + os.sep).startswith(home + os.sep) and not under_allowed_root(path, roots):
+            return True
+    return False
 
 
 def strip_allowed_paths(text, roots):
@@ -94,14 +123,16 @@ def offending(tool, tool_input, cwd, terms, roots):
             return None
         found = named_terms(written_text(tool, tool_input) + "\n" + path, terms, roots)
         return (found, path) if found else None
-    if under_allowed_root(cwd, roots):
-        return None
     if tool == "Bash":
         command = tool_input.get("command", "")
-        if not OUTWARD_BASH.search(command):
+        inside = under_allowed_root(cwd, roots)
+        if not OUTWARD_BASH.search(command) or (inside and not reaches_outside(command, cwd, roots)):
             return None
         found = named_terms(command, terms, roots)
-        return (found, f"a shell command run in {cwd}") if found else None
+        where = "a shell command that reaches out of" if inside else "a shell command run in"
+        return (found, f"{where} {cwd}") if found else None
+    if under_allowed_root(cwd, roots):
+        return None
     if tool == "Artifact":
         path = tool_input.get("file_path") or ""
         text = Path(path).read_text(errors="replace") if path and Path(path).is_file() else ""

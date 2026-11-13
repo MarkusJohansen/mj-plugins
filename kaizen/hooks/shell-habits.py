@@ -14,6 +14,16 @@ import time
 from pathlib import Path
 
 STATE = Path.home() / ".claude" / "shell-habits"
+HIT_LOG = "hits.jsonl"
+FLAG_MAX_AGE_DAYS = 14
+
+
+def prune_flags():
+    """Drop the per-session markers of sessions long over; the hit log is kept."""
+    cutoff = time.time() - FLAG_MAX_AGE_DAYS * 86400
+    for old in STATE.iterdir():
+        if old.name != HIT_LOG and old.is_file() and old.stat().st_mtime < cutoff:
+            old.unlink(missing_ok=True)
 
 RULES = {
     "instruction-reread": (
@@ -40,9 +50,11 @@ RULES = {
             re.M,
         ),
         "Run `verify` instead: it finds the packages your diff touches and runs ruff, related "
-        "tests (pytest/vitest) and, with --types, basedpyright/pnpm check, printing only "
-        "failures. Flags: --base origin/main, --all, --types, --no-tests, or explicit paths. "
-        "Re-issue if you need a specific test selection verify can't express.",
+        "tests (pytest/vitest, or a tests/run.sh above the file), shell syntax checks and, with "
+        "--types, basedpyright/pnpm check, printing only failures. Flags: --base origin/main, "
+        "--all, --types, --no-tests, or explicit paths; a directory (`verify .`) checks "
+        "everything under it, changed or not, without reformatting. Re-issue if you need a "
+        "specific test selection verify can't express.",
     ),
     "branch-overview": (
         re.compile(r"(main|master)\.\.\.?HEAD|gh pr (view|checks)\b"),
@@ -68,11 +80,12 @@ def main():
         flag = STATE / f"{session}.{rule}"
         denied = not flag.exists()
         if denied:
+            prune_flags()
             flag.write_text(command)
             outcome = "denied"
         else:
             outcome = "reissued" if flag.read_text() == command else "later"
-        with open(STATE / "hits.jsonl", "a") as log:
+        with open(STATE / HIT_LOG, "a") as log:
             log.write(
                 json.dumps(
                     {

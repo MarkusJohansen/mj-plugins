@@ -3,6 +3,11 @@
 A loop that makes Claude Code better at working with you, week by week, and a guard that
 keeps private names where they belong.
 
+`verify` covers Python (ruff, related pytest files), frontend (prettier, vitest) and shell
+(`bash -n`, shellcheck when installed). A `tests/run.sh` next to or above a changed file is
+that file's suite and runs once. `verify <dir>` checks everything under a directory, changed
+or not.
+
 ## What it does
 
 | Piece                          | Kind      | Job                                                       |

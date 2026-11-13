@@ -4,10 +4,15 @@
 Usage: verify [--base REF] [--all] [--types] [--no-tests] [PATH ...]
 
 Changed files come from `git diff HEAD` plus untracked files, or from the merge base with
-REF when --base is given, or from the PATH arguments. Each file is grouped under its
-nearest package (pyproject.toml or package.json). Prints one line per passing step and the
-tail of the output for a failing one, so a run costs a few hundred tokens instead of the
-whole log. Exits non-zero when any step fails.
+REF when --base is given, or from the PATH arguments; a directory stands for every file git
+knows under it, which is how to check a clean tree (`verify .`). Changed files are formatted
+and auto-fixed; files reached through a directory are only checked. Each file is grouped under
+its nearest package (pyproject.toml or package.json). Python gets ruff and its related
+pytest files, frontend files get prettier and vitest, shell scripts get `bash -n` and
+shellcheck when it is installed. A `tests/run.sh` next to or above a changed file is that
+file's test suite and runs once. Prints one line per passing step and the tail of the output
+for a failing one, so a run costs a few hundred tokens instead of the whole log. Exits
+non-zero when any step fails.
 """
 import argparse
 import os
@@ -20,6 +25,9 @@ from pathlib import Path
 FAILURE_TAIL_LINES = 40
 PYTHON_SUFFIXES = {".py", ".pyi"}
 FRONTEND_SUFFIXES = {".ts", ".tsx", ".js", ".mjs", ".svelte", ".css", ".json"}
+SHELL_SUFFIXES = {".sh", ".bash"}
+CHECKED_SUFFIXES = PYTHON_SUFFIXES | FRONTEND_SUFFIXES | SHELL_SUFFIXES
+SCRIPT_SUITE = Path("tests") / "run.sh"
 SKIPPED_DIRS = {".venv", "node_modules", ".git", "build", "dist"}
 SUMMARY_LINE = re.compile(r"\b(passed|failed|errors?|Tests?)\b")
 
@@ -37,6 +45,16 @@ def changed_files(root, base):
         names = git("diff", "--name-only", "HEAD", cwd=root)
     names += git("ls-files", "--others", "--exclude-standard", cwd=root)
     return [root / name for name in dict.fromkeys(names) if (root / name).is_file()]
+
+
+def files_under(path, root):
+    """The path itself, or for a directory every file git knows under it (ignored files skipped)."""
+    if not path.is_dir():
+        return [path]
+    names = git("ls-files", "--cached", "--others", "--exclude-standard", "--", str(path), cwd=root)
+    if names:
+        return [root / name for name in names if (root / name).is_file()]
+    return [file for file in path.rglob("*") if file.is_file() and not SKIPPED_DIRS & set(file.parts)]
 
 
 def package_of(path, root):
@@ -83,8 +101,10 @@ def related_python_tests(package, files):
 def verify_python(package, files, options):
     names = [str(file.relative_to(package)) for file in files]
     ruff = ["ruff"] if shutil.which("ruff") else python_tool(package, "ruff")
-    passed = run_step("ruff format", [*ruff, "format", "-q", *names], package)
-    passed &= run_step("ruff check", [*ruff, "check", "--fix", "-q", *names], package)
+    rewrite = [] if options.check_only else ["--fix"]
+    report = ["--check"] if options.check_only else []
+    passed = run_step("ruff format", [*ruff, "format", "-q", *report, *names], package)
+    passed &= run_step("ruff check", [*ruff, "check", *rewrite, "-q", *names], package)
     if options.types:
         passed &= run_step("basedpyright", [*python_tool(package, "basedpyright"), *names], package)
     if options.no_tests:
@@ -103,13 +123,37 @@ def verify_frontend(package, files, options):
     bin_dir = package / "node_modules" / ".bin"
     passed = True
     if (bin_dir / "prettier").exists():
-        passed &= run_step("prettier", [str(bin_dir / "prettier"), "--write", "--log-level", "warn", *names], package)
+        mode = "--check" if options.check_only else "--write"
+        passed &= run_step("prettier", [str(bin_dir / "prettier"), mode, "--log-level", "warn", *names], package)
     if options.types and shutil.which("pnpm"):
         passed &= run_step("pnpm check", ["pnpm", "--silent", "check"], package)
     if not options.no_tests and (bin_dir / "vitest").exists():
         mode = ["run"] if options.all else ["related", "--run", *names]
         passed &= run_step("vitest", [str(bin_dir / "vitest"), *mode, "--reporter=dot"], package)
     return passed
+
+
+def verify_shell(package, files):
+    passed = True
+    for file in files:
+        passed &= run_step(f"bash -n {file.name}", ["bash", "-n", str(file)], package)
+    if shutil.which("shellcheck"):
+        names = [str(file.relative_to(package)) for file in files]
+        passed &= run_step("shellcheck", ["shellcheck", "--severity=warning", *names], package)
+    return passed
+
+
+def script_suites(files, root):
+    """Each tests/run.sh that sits next to or above a changed file, nearest first, once."""
+    suites = {}
+    for file in files:
+        for directory in [file.parent, *file.parent.parents]:
+            if (directory / SCRIPT_SUITE).is_file():
+                suites[directory / SCRIPT_SUITE] = None
+                break
+            if directory == root:
+                break
+    return list(suites)
 
 
 def main():
@@ -123,10 +167,13 @@ def main():
 
     top = git("rev-parse", "--show-toplevel", cwd=os.getcwd())
     root = Path(top[0]) if top else Path.cwd()
-    files = [path.resolve() for path in options.paths] or changed_files(root, options.base)
-    files = [file for file in files if file.suffix in PYTHON_SUFFIXES | FRONTEND_SUFFIXES]
+    # A directory names files nobody edited: report on them, never reformat them.
+    options.check_only = any(path.is_dir() for path in options.paths)
+    named = [file for path in options.paths for file in files_under(path.resolve(), root)]
+    files = named if options.paths else changed_files(root, options.base)
+    files = [file for file in dict.fromkeys(files) if file.suffix in CHECKED_SUFFIXES]
     if not files:
-        print("verify: no changed Python or frontend files")
+        print("verify: no changed Python, frontend or shell files (name a directory to check all of it)")
         return 0
 
     packages = {}
@@ -140,8 +187,14 @@ def main():
         frontend_files = [file for file in package_files if file.suffix in FRONTEND_SUFFIXES]
         if python_files:
             passed &= verify_python(package, python_files, options)
+        shell_files = [file for file in package_files if file.suffix in SHELL_SUFFIXES]
         if frontend_files:
             passed &= verify_frontend(package, frontend_files, options)
+        if shell_files:
+            passed &= verify_shell(package, shell_files)
+    if not options.no_tests:
+        for suite in script_suites(files, root):
+            passed &= run_step(str(suite.relative_to(root)), ["bash", str(suite)], suite.parent.parent)
     print("verify: PASS" if passed else "verify: FAIL")
     return 0 if passed else 1
 

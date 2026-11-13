@@ -15,6 +15,8 @@ HOME = pathlib.Path.home()
 CFG = pathlib.Path(
     os.environ.get("CLAUDE_CONFIG_REPO", os.path.realpath(HOME / ".claude/CLAUDE.md"))
 ).parent
+# The marketplace this plugin ships in: its skills are loaded like any other and count too.
+MARKETPLACE = pathlib.Path(__file__).resolve().parent.parent.parent
 DAYS = 30
 BUDGET = {
     "CLAUDE.md": 200,
@@ -35,7 +37,10 @@ def lines(p):
 def recent_projects():
     cutoff = (time.time() - DAYS * 86400) * 1000
     prompts = collections.defaultdict(list)
-    for raw in (HOME / ".claude/history.jsonl").open(errors="replace"):
+    history = HOME / ".claude/history.jsonl"
+    if not history.is_file():
+        return prompts
+    for raw in history.open(errors="replace"):
         try:
             r = json.loads(raw)
         except json.JSONDecodeError:
@@ -50,7 +55,11 @@ def recent_projects():
 
 
 def instruction_files(projects):
-    files = [CFG / "user-CLAUDE.md", *sorted(CFG.glob("skills/*/SKILL.md"))]
+    files = [
+        CFG / "user-CLAUDE.md",
+        *sorted(CFG.glob("skills/*/SKILL.md")),
+        *sorted(MARKETPLACE.glob("*/skills/*/SKILL.md")),
+    ]
     for proj in projects:
         p = pathlib.Path(proj)
         files += [p / "CLAUDE.md", p / "AGENTS.md", *sorted(p.glob(".claude/skills/*/SKILL.md"))]
@@ -84,7 +93,7 @@ def repeated(prompts):
 def main():
     prompts = recent_projects()
     files = instruction_files(prompts)
-    print(f"## Instruction files over budget (lines / budget)")
+    print("## Instruction files over budget (lines / budget)")
     over = [(n, b, f) for n, b, f in files if b and n > b]
     for n, b, f in sorted(over, reverse=True):
         print(f"- {n}/{b}  {f}")

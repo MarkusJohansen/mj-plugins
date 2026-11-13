@@ -18,7 +18,17 @@ LABEL="com.claude.kaizen.weekly"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG="$HOME/.claude/introspect-history/launchd.log"
 
-mkdir -p "$HOME/.local/bin" "$HOME/.claude/introspect-history" "$(dirname "$TARGET")"
+# launchd jobs cannot read these folders (macOS privacy), so a job pointed at a checkout
+# inside one would fail on every run.
+case "$PLUGIN/" in
+  "$HOME/Documents/"*|"$HOME/Desktop/"*|"$HOME/Downloads/"*)
+    echo "kaizen: $PLUGIN is under a folder launchd cannot read." >&2
+    echo "Run the copy in the marketplace clone instead:" >&2
+    echo "  bash ~/.claude/plugins/marketplaces/<marketplace>/kaizen/scripts/setup.sh" >&2
+    exit 1 ;;
+esac
+
+mkdir -p "$HOME/.local/bin" "$HOME/.claude/introspect-history" "$(dirname "$TARGET")" "$(dirname "$PLIST")"
 for helper in verify branch-brief; do
   chmod +x "$PLUGIN/scripts/$helper"
   ln -sfn "$PLUGIN/scripts/$helper" "$HOME/.local/bin/$helper"

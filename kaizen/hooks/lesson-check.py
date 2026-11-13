@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Stop hook: if the user corrected Claude this session and no instruction file
-was edited since, block once and ask Claude to write the lesson down."""
+was edited since, block once and ask Claude to write the lesson down.
+
+Blocks at most once per session; the marker files that record it are deleted after
+FLAG_MAX_AGE_DAYS. Fails open: any error lets Claude stop."""
 
 import json
 import pathlib
 import re
 import sys
+import time
 
 CORRECTION = re.compile(
     r"^\s*(no\b|nope|stop\b|don'?t\b|do not\b|never\b|wrong\b|revert\b|undo\b|"
@@ -16,6 +20,17 @@ INSTRUCTION_FILE = re.compile(
     r"(SKILL\.md|CLAUDE\.md|AGENTS\.md|/memory/[^/]+\.md|/agents/[^/]+\.md|/rules/[^/]+\.md|/workflows/[^/]+\.md)$"
 )
 FLAG_DIR = pathlib.Path.home() / ".claude" / "lesson-check"
+FLAG_MAX_AGE_DAYS = 30
+# Only these transcript lines can hold a user prompt or a file edit; the rest (tool results,
+# attachments, snapshots) are most of a long transcript and are skipped without parsing.
+RELEVANT_LINE = re.compile(r'"type"\s*:\s*"(user|assistant)"')
+
+
+def prune_flags():
+    cutoff = time.time() - FLAG_MAX_AGE_DAYS * 86400
+    for old in FLAG_DIR.iterdir():
+        if old.is_file() and old.stat().st_mtime < cutoff:
+            old.unlink(missing_ok=True)
 
 
 def user_text(msg):
@@ -40,6 +55,8 @@ def main():
 
     last_correction, lesson_written = None, False
     for line in open(transcript, encoding="utf-8", errors="replace"):
+        if not RELEVANT_LINE.search(line):
+            continue
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -59,6 +76,7 @@ def main():
     if not last_correction or lesson_written:
         return
     FLAG_DIR.mkdir(parents=True, exist_ok=True)
+    prune_flags()
     flag.touch()
     quote = " ".join(last_correction.split())[:100]
     print(
@@ -79,4 +97,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:  # noqa: BLE001 - a broken check must never keep Claude from stopping
+        pass
+    sys.exit(0)
