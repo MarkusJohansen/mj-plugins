@@ -30,5 +30,6 @@ Add a body only when *why* isn't obvious from the subject: a line or two on moti
 
 - Nothing staged? Ask whether to stage everything or specific files — never silently `git add -A`.
 - One logical change per commit; suggest splitting an unrelated diff.
+- Someone else's work already staged (`git status` before staging yours)? Commit with an explicit pathspec (`git commit -- <your files>`) so their staged changes stay staged and out of your commit.
 - Never `--no-verify` or `--amend` a pushed commit. If a hook fails, fix the cause and commit fresh.
 - Don't commit `.env`, credentials, or key files — warn loudly if asked to.
