@@ -120,6 +120,28 @@ fi
 
 rm -rf "$TMP_REPO"
 
+# auto-format only touches files in projects that declare the formatter.
+assert_formatted() {
+  local name="$1" config="$2" expect="$3" repo
+  repo=$(mktemp -d)
+  mkdir -p "$repo/.git"
+  [[ -n "$config" ]] && printf '%b' "$config" > "$repo/pyproject.toml"
+  printf 'x = {  "a":1 }\n' > "$repo/sample.py"
+  jq -n --arg path "$repo/sample.py" '{tool_name: "Edit", tool_input: {file_path: $path}}' \
+    | bash "${REPO}/hooks/auto-format.sh"
+  if [[ "$(cat "$repo/sample.py")" == "$expect" ]]; then
+    printf '  PASS  %s\n' "$name"; pass=$((pass + 1))
+  else
+    printf '  FAIL  %s — got: %s\n' "$name" "$(cat "$repo/sample.py")"; fail=$((fail + 1))
+  fi
+  rm -rf "$repo"
+}
+
+if command -v ruff >/dev/null; then
+  assert_formatted "ruff runs in a project that configures it" '[tool.ruff]\nline-length = 100\n' 'x = {"a": 1}'
+  assert_formatted "ruff leaves a project without ruff config alone" '' 'x = {  "a":1 }'
+fi
+
 echo
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [[ "$fail" == 0 ]]

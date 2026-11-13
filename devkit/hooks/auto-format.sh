@@ -65,6 +65,34 @@ resolve_bin() {
   return 1
 }
 
+# Succeed when the project the file lives in (searched up to its repo root) declares the
+# formatter: a config file, a pyproject/package.json section, or a local install. A formatter
+# that is merely on PATH must not rewrite files in projects that never adopted it: on an
+# unformatted file it would reformat every untouched line.
+project_uses() {
+  local dir="$1" name="$2"
+  while [[ "$dir" != "/" && -n "$dir" ]]; do
+    case "$name" in
+      ruff)
+        [[ -f "$dir/ruff.toml" || -f "$dir/.ruff.toml" || -x "$dir/.venv/bin/ruff" ]] && return 0
+        [[ -f "$dir/pyproject.toml" ]] && grep -q '^\[tool\.ruff' "$dir/pyproject.toml" && return 0 ;;
+      black)
+        [[ -x "$dir/.venv/bin/black" ]] && return 0
+        [[ -f "$dir/pyproject.toml" ]] && grep -q '^\[tool\.black' "$dir/pyproject.toml" && return 0 ;;
+      prettier)
+        [[ -x "$dir/node_modules/.bin/prettier" ]] && return 0
+        compgen -G "$dir/.prettierrc*" >/dev/null || compgen -G "$dir/prettier.config.*" >/dev/null && return 0 ;;
+      biome)
+        [[ -f "$dir/biome.json" || -f "$dir/biome.jsonc" ]] && return 0 ;;
+      shfmt)
+        [[ -f "$dir/.editorconfig" ]] && grep -q 'shell_variant\|\[\*\.sh\]' "$dir/.editorconfig" && return 0 ;;
+    esac
+    [[ -e "$dir/.git" ]] && return 1
+    dir="$(dirname "$dir")"
+  done
+  return 1
+}
+
 format_one() {
   local file="$1"
   [[ -f "$file" ]] || return 0
@@ -73,16 +101,16 @@ format_one() {
 
   case "$file" in
     *.py)
-      if bin="$(resolve_bin "$dir" ruff)"; then
+      if project_uses "$dir" ruff && bin="$(resolve_bin "$dir" ruff)"; then
         "$bin" format -- "$file" >/dev/null 2>&1 || return 0
-      elif bin="$(resolve_bin "$dir" black)"; then
+      elif project_uses "$dir" black && bin="$(resolve_bin "$dir" black)"; then
         "$bin" -q -- "$file" >/dev/null 2>&1 || return 0
       fi
       ;;
     *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.json|*.jsonc|*.css|*.scss|*.html|*.md|*.svelte|*.vue|*.yaml|*.yml)
-      if bin="$(resolve_bin "$dir" prettier)"; then
+      if project_uses "$dir" prettier && bin="$(resolve_bin "$dir" prettier)"; then
         "$bin" --write --log-level=silent "$file" >/dev/null 2>&1 || return 0
-      elif bin="$(resolve_bin "$dir" biome)"; then
+      elif project_uses "$dir" biome && bin="$(resolve_bin "$dir" biome)"; then
         "$bin" format --write "$file" >/dev/null 2>&1 || return 0
       fi
       ;;
@@ -93,7 +121,7 @@ format_one() {
       bin="$(resolve_bin "$dir" gofmt)" && "$bin" -w -- "$file" >/dev/null 2>&1 || return 0
       ;;
     *.sh|*.bash)
-      bin="$(resolve_bin "$dir" shfmt)" && "$bin" -w -- "$file" >/dev/null 2>&1 || return 0
+      project_uses "$dir" shfmt && bin="$(resolve_bin "$dir" shfmt)" && "$bin" -w -- "$file" >/dev/null 2>&1 || return 0
       ;;
     *)
       return 0
