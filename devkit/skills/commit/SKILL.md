@@ -7,6 +7,15 @@ description: Stage and create a git commit with a consistent message format. Use
 
 Read the diff (`git status`, `git diff --staged`, `git diff`), then commit with a message grounded in what actually changed — not from memory.
 
+## Checklist gate
+
+Before writing the message, make sure the diff has been checked:
+
+- If `checklist` already ran in this session over these changes, go on.
+- Otherwise, if the diff is more than a trivial edit (code beyond a typo, a config value or a version bump), invoke the `checklist` skill on it first. Report its findings in a few lines.
+- Blocking findings (correctness, failing tests, secrets): stop and ask whether to fix first. Other findings: list them, then commit.
+- The user can skip the gate by saying so ("commit, skip checklist").
+
 ## Message format
 
 Subject: `[type][Domain] Summary`
