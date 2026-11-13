@@ -1,13 +1,8 @@
----
-paths:
-  - "__VAULT_PATH__/**"
----
-
 # Working in the Obsidian vault
 
-These rules load when Claude reads a file under `__VAULT_PATH__/`. They do **not** load in other projects — keeping the user-global CLAUDE.md smaller.
+The `vault-rule.sh` SessionStart hook prints these rules when a session starts under `__VAULT_PATH__/`. They do **not** load in other projects, which keeps the user-global CLAUDE.md smaller.
 
-When the current path is under the vault, the vault's own `CLAUDE.md` and its "How I do my Vaults in Obsidian" note are the source of truth — read them. The vault rule is **never change anything without explicit user permission**; a `PreToolUse` hook (`vault-write-guard.sh`) emits a reminder on every edit there. A `PostToolUse` hook (`vault-frontmatter-check.sh`) warns when a saved note is missing frontmatter (`categories`, `date`) or the abstract callout.
+The vault's own `CLAUDE.md` and its "How I do my Vaults in Obsidian" note are the source of truth: read them. The vault rule is **never change anything without explicit user permission**; `vault-write-guard.sh` reminds you of it on the first vault edit of a session, from any working directory. After each save, `vault-note-check.sh` tells you when the note has no frontmatter (`categories`, `date`), no abstract callout, or a body short enough to be a stub.
 
 ## Skills that target the vault
 
@@ -18,7 +13,7 @@ When the current path is under the vault, the vault's own `CLAUDE.md` and its "H
 - **Writing the abstract callout** — invoke `/abstract-note` (≤150 words, strict).
 - **Today's journal** — invoke `/daily-note`.
 - **Searching the vault** — invoke `/vault-search`. For broad/fuzzy queries it delegates to the `vault-librarian` agent.
-- **Finding unfinished stubs** — invoke `/find-stubs`. Vault-wide audit. The `vault-stub-check.sh` hook also warns at save time when a note's body is under ~40 words.
+- **Finding unfinished stubs** — invoke `/find-stubs`. Vault-wide audit. The `vault-note-check.sh` hook also warns at save time when a note's body is under ~40 words.
 - **Pruning low-value notes** — invoke `/cull-vault`. Reports candidates (orphans, abandoned stubs, duplicates, scratch leftovers) with reasons. Never deletes — the user decides.
 - **Shortening a bloated note** — invoke `/compress-note [1-5]` (default 3). Deletion only: whatever survives is word-for-word the user's. Punch-list first, never silent.
 
