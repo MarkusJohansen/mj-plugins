@@ -16,32 +16,32 @@
     {
       "name": "devkit",
       "source": "./devkit",
-      "description": "Coding toolkit — planning, commit/PR/review/quality/docs skills, code-focused subagents, and auto-format / secret / dangerous-rm safety hooks."
+      "description": "Coding toolkit \u2014 planning, commit/PR/review/quality/docs skills, code-focused subagents, and auto-format / secret / dangerous-rm safety hooks."
     },
     {
       "name": "obsidian",
       "source": "./obsidian",
-      "description": "Obsidian vault toolkit — note skills, the vault-librarian subagent, a path-scoped vault rule, and edit-guard / frontmatter / stub hooks."
+      "description": "Obsidian vault toolkit \u2014 note skills, the vault-librarian subagent, a path-scoped vault rule, and edit-guard / frontmatter / stub hooks."
     },
     {
       "name": "notify",
       "source": "./notify",
-      "description": "Desktop attention cues — a Stop chime that fires when you've walked away, its idle-tracker, and a macOS notification banner."
+      "description": "Desktop attention cues \u2014 a Stop chime that fires when you've walked away, its idle-tracker, and a macOS notification banner."
     },
     {
       "name": "opsx-orchestrate",
       "source": "./opsx-orchestrate",
-      "description": "Orchestration over the opsx (OpenSpec) plugin — partition change items into non-overlapping scopes, then fan them out across isolated worktrees as one branch + PR each."
+      "description": "Orchestration over the opsx (OpenSpec) plugin \u2014 partition change items into non-overlapping scopes, then fan them out across isolated worktrees as one branch + PR each."
     },
     {
-      "name": "supacode",
-      "source": "./supacode",
-      "description": "Work with the Supacode agent terminal — add, use, and clean up worktrees through the supacode CLI."
+      "name": "worktree",
+      "source": "./worktree",
+      "description": "Add, use, and clean up git worktrees as siblings of the repo checkout."
     },
     {
       "name": "htmlify",
       "source": "./htmlify",
-      "description": "Turn anything from the conversation into one self-contained, offline HTML artifact you can open and share."
+      "description": "Turn anything from the conversation into one HTML page, published as a private claude.ai Artifact with a shareable link."
     }
   ]
 }

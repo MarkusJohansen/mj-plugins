@@ -25,7 +25,7 @@ claude plugin install <plugin>@mj-plugins
 | [`obsidian`](./obsidian) | 6 skills, 1 agent, 3 hooks | Obsidian vault toolkit — note skills, the `vault-librarian` subagent, a path-scoped vault rule, and edit-guard / frontmatter / stub hooks. |
 | [`notify`](./notify) | 3 hooks | Desktop attention cues — a Stop chime that fires when you've walked away, its idle-tracker, and a macOS notification banner. |
 | [`opsx-orchestrate`](./opsx-orchestrate) | 2 skills | Orchestration over the opsx (OpenSpec) plugin — partition change items into non-overlapping scopes, then fan them out across isolated worktrees as one branch + PR each. |
-| [`supacode`](./supacode) | 3 skills | Work with the Supacode agent terminal — add, use, and clean up worktrees through the supacode CLI. |
+| [`worktree`](./worktree) | 3 skills | Add, use, and clean up git worktrees as siblings of the repo checkout. |
 | [`htmlify`](./htmlify) | 1 skill | Turn anything from the conversation into one self-contained, offline HTML artifact you can open and share. |
 
 ```sh
@@ -34,7 +34,7 @@ claude plugin install devkit@mj-plugins
 claude plugin install obsidian@mj-plugins
 claude plugin install notify@mj-plugins
 claude plugin install opsx-orchestrate@mj-plugins
-claude plugin install supacode@mj-plugins
+claude plugin install worktree@mj-plugins
 claude plugin install htmlify@mj-plugins
 ```
 

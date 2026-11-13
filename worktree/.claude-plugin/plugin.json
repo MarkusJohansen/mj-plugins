@@ -1,0 +1,14 @@
+{
+  "name": "worktree",
+  "description": "Add, use, and clean up git worktrees as siblings of the repo checkout.",
+  "version": "0.2.0",
+  "author": {
+    "name": "Markus Johansen"
+  },
+  "keywords": [
+    "git",
+    "worktree",
+    "branch"
+  ],
+  "license": "MIT"
+}
