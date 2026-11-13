@@ -115,7 +115,7 @@ def main():
         for line in open(HABIT_HITS):
             hit = json.loads(line)
             if hit["ts"] >= cutoff:
-                habit_hits[f"{hit['rule']}:{'denied' if hit['denied'] else 'passed'}"] += 1
+                habit_hits[f"{hit['rule']}:{hit.get('outcome') or ('denied' if hit['denied'] else 'later')}"] += 1
 
     report = {
         "days": options.days,

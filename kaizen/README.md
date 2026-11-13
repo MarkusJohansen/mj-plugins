@@ -38,8 +38,9 @@ bash ~/.claude/plugins/marketplaces/mj-plugins/kaizen/scripts/setup.sh
 ```
 
 `setup.sh` links `verify` and `branch-brief` into `~/.local/bin`, clones the marketplace to
-`~/.claude/kaizen/mj-plugins` and loads the LaunchAgent (Thursdays 08:30). Everything runs
-from paths under `~/.claude`, because launchd jobs can't read `~/Documents`.
+`~/.local/share/kaizen/mj-plugins` and loads the LaunchAgent (Thursdays 08:30). Everything runs
+from paths outside `~/Documents`, which launchd jobs can't read. The clone sits outside
+`~/.claude` because Claude Code protects that folder from edits in unattended runs.
 
 ## Private names
 

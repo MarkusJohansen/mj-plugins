@@ -26,11 +26,19 @@ habit_decision() {
 check "re-reading CLAUDE.md is nudged" deny "$(habit_decision s1 'cat CLAUDE.md')"
 check "a nudge fires once per session" allow "$(habit_decision s1 'cat CLAUDE.md')"
 check "hand-run pytest is nudged" deny "$(habit_decision s2 'cd libs/x && .venv/bin/pytest -q | tail -5')"
+check "uv run ruff check is nudged" deny "$(habit_decision s7 'uv run ruff check --fix')"
+check "a commit message naming pytest passes" allow "$(habit_decision s8 'git commit -m "Speed up pytest fixtures"')"
+check "grep for pytest passes" allow "$(habit_decision s9 'grep -n pytest pyproject.toml')"
 check "branch log is nudged" deny "$(habit_decision s3 'git log --oneline origin/main..HEAD')"
 check "python string replace is nudged" deny "$(habit_decision s4 "s=open('a').read(); s=s.replace('a','b'); open('a','w').write(s)")"
 check "verify itself passes" allow "$(habit_decision s5 'verify --all')"
 check "unrelated commands pass" allow "$(habit_decision s6 'ls -la')"
-check "every hit is logged" 5 "$(wc -l < "$SANDBOX/.claude/shell-habits/hits.jsonl" | tr -d ' ')"
+check "every hit is logged" 6 "$(wc -l < "$SANDBOX/.claude/shell-habits/hits.jsonl" | tr -d ' ')"
+check "re-running the nudged command is logged as reissued" 1 \
+  "$(jq -s '[.[] | select(.outcome == "reissued")] | length' "$SANDBOX/.claude/shell-habits/hits.jsonl")"
+habit_decision s1 'cat AGENTS.md' >/dev/null
+check "a different later call is logged as later" 1 \
+  "$(jq -s '[.[] | select(.outcome == "later")] | length' "$SANDBOX/.claude/shell-habits/hits.jsonl")"
 
 guard_decision() {
   local tool="$1" cwd="$2" input="$3"

@@ -2,7 +2,8 @@
 # One-time setup after `claude plugin install kaizen@<marketplace>`. Idempotent.
 #
 # - links verify and branch-brief into ~/.local/bin;
-# - clones the marketplace to ~/.claude/kaizen/<marketplace>, the copy the weekly run edits;
+# - clones the marketplace to ~/.local/share/kaizen/<marketplace>, the copy the weekly run edits
+#   (not under ~/.claude, which Claude Code protects from edits even in acceptEdits mode);
 # - writes and loads a LaunchAgent that runs scripts/weekly.sh on Thursdays at 08:30.
 # Everything points at the marketplace clone under ~/.claude/plugins, which launchd can read
 # (it can't read ~/Documents) and whose path survives plugin updates.
@@ -12,7 +13,7 @@ set -euo pipefail
 
 PLUGIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MARKETPLACE="$(dirname "$PLUGIN")"
-TARGET="$HOME/.claude/kaizen/$(basename "$MARKETPLACE")"
+TARGET="$HOME/.local/share/kaizen/$(basename "$MARKETPLACE")"
 LABEL="com.claude.kaizen.weekly"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG="$HOME/.claude/introspect-history/launchd.log"

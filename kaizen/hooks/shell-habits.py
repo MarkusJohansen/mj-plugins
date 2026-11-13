@@ -34,7 +34,10 @@ RULES = {
     ),
     "hand-verify": (
         re.compile(
-            r"(^|[;&|/\s])(pytest|ruff (format|check)|basedpyright|vitest|pnpm (check|test))\b"
+            # Command position only (line start, after ; & | ( or a path /, or after `uv run`),
+            # so a commit message or `grep pytest` doesn't trip it.
+            r"(^|[;&|(]\s*|/|\buv run\s+)(pytest|ruff (format|check)|basedpyright|vitest|pnpm (check|test))\b",
+            re.M,
         ),
         "Run `verify` instead: it finds the packages your diff touches and runs ruff, related "
         "tests (pytest/vitest) and, with --types, basedpyright/pnpm check, printing only "
@@ -60,9 +63,15 @@ def main():
     for rule, (pattern, advice) in RULES.items():
         if not pattern.search(command):
             continue
+        # The flag holds the denied command, so a hit can be told apart as the nudge itself,
+        # the same command re-issued (the helper didn't fit) or a later, different call.
         flag = STATE / f"{session}.{rule}"
         denied = not flag.exists()
-        flag.touch()
+        if denied:
+            flag.write_text(command)
+            outcome = "denied"
+        else:
+            outcome = "reissued" if flag.read_text() == command else "later"
         with open(STATE / "hits.jsonl", "a") as log:
             log.write(
                 json.dumps(
@@ -70,6 +79,7 @@ def main():
                         "ts": int(time.time()),
                         "rule": rule,
                         "denied": denied,
+                        "outcome": outcome,
                         "cwd": event.get("cwd"),
                         "command": command[:300],
                     }

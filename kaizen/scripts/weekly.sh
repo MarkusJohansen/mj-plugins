@@ -9,14 +9,15 @@
 # 3. Claude makes at most two evidence-backed fixes to this plugin on a kaizen/<date>
 #    branch of its own clone ($TARGET), commits there (never pushes) and says how to merge.
 # User settings are skipped (--setting-sources): their hooks may live in ~/Documents, and an
-# unreadable PreToolUse hook blocks every tool call. Absolute paths in --allowedTools rules
-# need a leading // (one / is project-relative), hence "/$OUTDIR".
+# unreadable PreToolUse hook blocks every tool call. File writes go through acceptEdits, which
+# allows edits inside the working directory and the --add-dir folders only; path-scoped
+# Write/Edit rules in --allowedTools did not match in headless runs and left the job stuck.
 set -euo pipefail
 
 PLUGIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HIST="$HOME/.claude/introspect-history"
 OUTDIR="${KAIZEN_REPORT_DIR:-$HOME/second-brain/_system/introspect}"
-TARGET="$HOME/.claude/kaizen/$(basename "$(dirname "$PLUGIN")")"
+TARGET="$HOME/.local/share/kaizen/$(basename "$(dirname "$PLUGIN")")"
 SOURCE_HINT="${KAIZEN_SOURCE:-the plugin repo checkout}"
 TODAY=$(date +%F)
 BRANCH="kaizen/$TODAY"
@@ -43,15 +44,15 @@ Write $OUTDIR/$TODAY.md. Frontmatter exactly: categories: [system], created: $TO
 3. Learning tracks: uses of TaskCreate, CronCreate, Workflow, Artifact, LSP, EnterPlanMode, codebase-memory MCP this week (0 is a finding). Plus learn mode, from $HIST/learn-stats.json if it exists (running totals: sessions, turns, blockedEdits).
 4. Up to 3 quoted correction samples and whether a skill/CLAUDE.md/memory file was edited the same week.
 5. Harness upkeep, from $HIST/scan-$TODAY.txt: for each instruction file over budget, one line proposing what to cut or move. For each prompt repeated 3+ times in a project, propose a local skill: one-word name + what it would do. Propose only.
-6. Shell recipes, from $HIST/shell-$TODAY.json: Bash calls and output (chars/4 = tokens), the 3 costliest repeated shapes with one sample each, and the shell-habits nudge hits (a rule mostly 'passed' means its helper lacks something).
+6. Shell recipes, from $HIST/shell-$TODAY.json: Bash calls and output (chars/4 = tokens), the 3 costliest repeated shapes with one sample each, and the shell-habits nudge hits by outcome: denied (the nudge), reissued (the same command run anyway: the helper didn't fit) and later (other calls in the session after the nudge).
 7. Three concrete actions for next week, one line each.
 Max 65 lines. Plain words, explain any jargon. Evidence or silence: every claim cites a number. $PRIVACY Do not edit any other file."
 
 cd "$WORK_DIR"
 "$CLAUDE_BIN" -p "$REPORT_PROMPT" \
-  --model sonnet --setting-sources project,local \
+  --model sonnet --setting-sources project,local --permission-mode acceptEdits \
   --add-dir "$HIST" --add-dir "$OUTDIR" \
-  --allowedTools "Read" "Write(/$OUTDIR/**)" "Bash(jq *)" "Bash(python3 -c *)" "Bash(ls *)"
+  --allowedTools "Read" "Bash(jq *)" "Bash(python3 -c *)" "Bash(ls *)"
 
 if ! git -C "$TARGET" fetch -q origin main; then
   echo "Self-improvement skipped: could not fetch origin for $TARGET." >> "$OUTDIR/$TODAY.md"
@@ -63,7 +64,7 @@ IMPROVE_PROMPT="You are the weekly self-improvement run for this Claude Code set
 Evidence: $OUTDIR/$TODAY.md (this week's report), $HIST/shell-$TODAY.json (repeated shell recipes and nudge hits), $HIST/scan-$TODAY.txt (instruction files over budget).
 Pick at most TWO changes, each backed by a number from the evidence, in order of preference:
 - a shell recipe repeated in 3+ sessions costing 20K+ chars: a helper in kaizen/scripts/ (setup.sh links helpers onto PATH), a rule in kaizen/hooks/shell-habits.py pointing at it, a test in kaizen/hooks/tests/run.sh, and a line in kaizen/README.md;
-- a shell-habits rule mostly 'passed': extend its helper so the pass-through is no longer needed, or narrow the pattern;
+- a shell-habits rule with 3+ 'reissued' hits: read those commands, then extend its helper so they are no longer needed, or narrow the pattern;
 - a skill in this repo over its 500-line budget: move detail into a linked reference file, never dropping a rule that still earns its place.
 Never edit files outside kaizen/, never delete a hook or skill, never weaken name-guard. $PRIVACY If nothing clears the bar, change nothing.
 Run 'bash kaizen/hooks/tests/run.sh' BEFORE editing and again after. If a test that passed before now fails and you can't fix it, 'git checkout .' and report it. Otherwise bump the patch version in kaizen/.claude-plugin/plugin.json, and commit on $BRANCH with a '[chore][kaizen] <summary>' title and a body citing the evidence. Do not push.
@@ -71,8 +72,8 @@ Then append to $OUTDIR/$TODAY.md a section '## Self-improvement' (max 15 lines):
 
 cd "$TARGET"
 "$CLAUDE_BIN" -p "$IMPROVE_PROMPT" \
-  --model sonnet --setting-sources project,local \
+  --model sonnet --setting-sources project,local --permission-mode acceptEdits \
   --add-dir "$HIST" --add-dir "$OUTDIR" \
-  --allowedTools "Read" "Edit(/$TARGET/**)" "Write(/$TARGET/**)" "Edit(/$OUTDIR/**)" "Write(/$OUTDIR/**)" \
+  --allowedTools "Read" \
     "Bash(git status*)" "Bash(git diff*)" "Bash(git add *)" "Bash(git commit *)" "Bash(git checkout .)" \
     "Bash(git log*)" "Bash(bash kaizen/hooks/tests/run.sh)" "Bash(python3 *)" "Bash(jq *)" "Bash(ls *)" "Bash(wc *)"
