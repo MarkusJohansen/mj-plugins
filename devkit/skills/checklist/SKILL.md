@@ -48,6 +48,12 @@ If the diff is a refactor, restructure, rename, or cleanup (not a feature, fix, 
 - [ ] Pure logic is separated from side effects so it can be tested without mocks of everything
 - [ ] No `.skip`, `xit`, commented-out asserts, or `expect(true).toBe(true)` left behind
 
+### Break it
+The one section that runs code: a test that passes proves little until you have seen it fail, and a change you only read has not been attacked. Write probes as throwaway files, delete them after, and report what they found; don't fix the code here.
+
+- [ ] **Each new test fails without its change.** Revert the production half (`git stash push <src files>`), run the new tests, restore. A test that still passes, or fails only on an import or a missing name, proves nothing: flag it.
+- [ ] **Tried to break each changed behaviour.** For every behaviour the diff adds or changes, write 2-3 probes aimed at it: the inputs most likely to fail it (empty, one, many; boundaries and ties; degenerate geometry or data; a re-run or a second call; the old data shape). A probe that breaks it is a ⚠ with the input that did it.
+
 ### Code hygiene
 - [ ] Names explain themselves — variables, functions, classes, files read as intent, not abbreviations or `tmp2`
 - [ ] No unused imports, variables, or functions introduced
