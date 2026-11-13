@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# One compact picture of the current branch: base, commits, diff size, local changes,
+# the PR and only its failing checks, and the gh-stack position when there is one.
+# Usage: branch-brief [BASE]   (default: the PR's base, else origin/main)
+set -uo pipefail
+
+MAX_COMMITS=25
+MAX_STAT_LINES=30
+
+git rev-parse --git-dir >/dev/null 2>&1 || { echo "branch-brief: not a git repo"; exit 1; }
+branch=$(git branch --show-current)
+pr_json=""
+command -v gh >/dev/null && pr_json=$(gh pr view --json number,title,state,isDraft,baseRefName,reviewDecision,mergeStateStatus,url 2>/dev/null)
+
+base="${1:-}"
+if [[ -z "$base" && -n "$pr_json" ]]; then base="origin/$(jq -r .baseRefName <<<"$pr_json")"; fi
+base="${base:-origin/main}"
+merge_base=$(git merge-base "$base" HEAD 2>/dev/null) || { echo "branch-brief: no merge base with $base"; exit 1; }
+
+ahead=$(git rev-list --count "$merge_base"..HEAD)
+behind=$(git rev-list --count HEAD.."$base")
+echo "branch $branch  base $base  ahead $ahead  behind $behind"
+
+echo "-- commits"
+git log --format='%h %s' "$merge_base"..HEAD | head -n "$MAX_COMMITS"
+(( ahead > MAX_COMMITS )) && echo "   ... $((ahead - MAX_COMMITS)) more"
+
+echo "-- committed diff vs merge base"
+stat=$(git diff --stat=120 "$merge_base" HEAD)
+lines=$(wc -l <<<"$stat")
+if (( lines > MAX_STAT_LINES + 1 )); then
+  head -n "$MAX_STAT_LINES" <<<"$stat"; echo "   ... $((lines - MAX_STAT_LINES - 1)) more files"; tail -1 <<<"$stat"
+else
+  echo "$stat"
+fi
+
+local_changes=$(git status --short)
+echo "-- uncommitted: $(grep -c . <<<"$local_changes" || true) files"
+head -15 <<<"$local_changes"
+
+if [[ -n "$pr_json" ]]; then
+  jq -r '"-- PR #\(.number) \(.state)\(if .isDraft then " draft" else "" end) review=\(.reviewDecision // "none") merge=\(.mergeStateStatus)\n   \(.title)\n   \(.url)"' <<<"$pr_json"
+  failing=$(gh pr checks --json name,state,link -q '.[] | select(.state=="FAILURE" or .state=="ERROR") | "   FAIL \(.name)  \(.link)"' 2>/dev/null)
+  pending=$(gh pr checks --json state -q '[.[] | select(.state=="PENDING" or .state=="IN_PROGRESS" or .state=="QUEUED")] | length' 2>/dev/null)
+  echo "-- checks: ${pending:-?} pending"
+  [[ -n "$failing" ]] && echo "$failing"
+else
+  echo "-- no PR for this branch"
+fi
+
+if gh extension list 2>/dev/null | grep -q stack; then
+  stack=$(gh stack view 2>/dev/null | head -20)
+  grep -q -- " $branch " <<<"$stack" && { echo "-- stack"; echo "$stack"; }
+fi

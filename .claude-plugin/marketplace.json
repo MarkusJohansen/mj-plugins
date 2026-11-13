@@ -42,6 +42,11 @@
       "name": "htmlify",
       "source": "./htmlify",
       "description": "Turn anything from the conversation into one HTML page, published as a private claude.ai Artifact with a shareable link."
+    },
+    {
+      "name": "kaizen",
+      "source": "./kaizen",
+      "description": "Self-improvement loop: introspection, a weekly job that commits evidence-backed fixes to a review branch, shell-habit nudges with verify/branch-brief helpers, lesson and size checks, and a private-name guard."
     }
   ]
 }

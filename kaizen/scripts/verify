@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""Format, lint, type-check and test only the packages the current change touches.
+
+Usage: verify [--base REF] [--all] [--types] [--no-tests] [PATH ...]
+
+Changed files come from `git diff HEAD` plus untracked files, or from the merge base with
+REF when --base is given, or from the PATH arguments. Each file is grouped under its
+nearest package (pyproject.toml or package.json). Prints one line per passing step and the
+tail of the output for a failing one, so a run costs a few hundred tokens instead of the
+whole log. Exits non-zero when any step fails.
+"""
+import argparse
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+FAILURE_TAIL_LINES = 40
+PYTHON_SUFFIXES = {".py", ".pyi"}
+FRONTEND_SUFFIXES = {".ts", ".tsx", ".js", ".mjs", ".svelte", ".css", ".json"}
+SKIPPED_DIRS = {".venv", "node_modules", ".git", "build", "dist"}
+SUMMARY_LINE = re.compile(r"\b(passed|failed|errors?|Tests?)\b")
+
+
+def git(*args, cwd):
+    result = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
+    return result.stdout.splitlines() if result.returncode == 0 else []
+
+
+def changed_files(root, base):
+    if base:
+        merge_base = git("merge-base", base, "HEAD", cwd=root)
+        names = git("diff", "--name-only", merge_base[0] if merge_base else base, cwd=root)
+    else:
+        names = git("diff", "--name-only", "HEAD", cwd=root)
+    names += git("ls-files", "--others", "--exclude-standard", cwd=root)
+    return [root / name for name in dict.fromkeys(names) if (root / name).is_file()]
+
+
+def package_of(path, root):
+    for directory in [path.parent, *path.parent.parents]:
+        if (directory / "pyproject.toml").exists() or (directory / "package.json").exists():
+            return directory
+        if directory == root:
+            return root
+    return root
+
+
+def run_step(label, command, cwd):
+    environment = {**os.environ, "NO_COLOR": "1", "FORCE_COLOR": "0"}
+    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, env=environment)
+    output = (result.stdout + result.stderr).strip().splitlines()
+    if result.returncode == 0:
+        counts = [line for line in output if SUMMARY_LINE.search(line)]
+        summary = (counts or output or [""])[-1].strip()
+        print(f"ok    {label}  {summary[:120]}")
+        return True
+    print(f"FAIL  {label}  (exit {result.returncode}): {' '.join(command)[:160]}")
+    for line in output[-FAILURE_TAIL_LINES:]:
+        print(f"      {line}")
+    return False
+
+
+def python_tool(package, tool):
+    local = package / ".venv" / "bin" / tool
+    if local.exists():
+        return [str(local)]
+    if shutil.which("uv") and (package / "pyproject.toml").exists():
+        return ["uv", "run", "--quiet", "--project", str(package), tool]
+    return [tool]
+
+
+def related_python_tests(package, files):
+    tests = {file for file in files if file.name.startswith("test_")}
+    for file in files:
+        if not file.name.startswith("test_"):
+            tests.update(test for test in package.rglob(f"test_{file.stem}*.py") if not SKIPPED_DIRS & set(test.parts))
+    return sorted(str(test.relative_to(package)) for test in tests)
+
+
+def verify_python(package, files, options):
+    names = [str(file.relative_to(package)) for file in files]
+    ruff = ["ruff"] if shutil.which("ruff") else python_tool(package, "ruff")
+    passed = run_step("ruff format", [*ruff, "format", "-q", *names], package)
+    passed &= run_step("ruff check", [*ruff, "check", "--fix", "-q", *names], package)
+    if options.types:
+        passed &= run_step("basedpyright", [*python_tool(package, "basedpyright"), *names], package)
+    if options.no_tests:
+        return passed
+    targets = [] if options.all else related_python_tests(package, files)
+    if targets or options.all:
+        pytest = [*python_tool(package, "pytest"), "-q", "-x", "--no-header", "-p", "no:cacheprovider"]
+        passed &= run_step("pytest", [*pytest, *targets], package)
+    else:
+        print("skip  pytest  no related test files; pass --all to run the suite")
+    return passed
+
+
+def verify_frontend(package, files, options):
+    names = [str(file.relative_to(package)) for file in files]
+    bin_dir = package / "node_modules" / ".bin"
+    passed = True
+    if (bin_dir / "prettier").exists():
+        passed &= run_step("prettier", [str(bin_dir / "prettier"), "--write", "--log-level", "warn", *names], package)
+    if options.types and shutil.which("pnpm"):
+        passed &= run_step("pnpm check", ["pnpm", "--silent", "check"], package)
+    if not options.no_tests and (bin_dir / "vitest").exists():
+        mode = ["run"] if options.all else ["related", "--run", *names]
+        passed &= run_step("vitest", [str(bin_dir / "vitest"), *mode, "--reporter=dot"], package)
+    return passed
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("paths", nargs="*", type=Path)
+    parser.add_argument("--base", help="diff against the merge base with this ref")
+    parser.add_argument("--all", action="store_true", help="run each package's whole test suite")
+    parser.add_argument("--types", action="store_true", help="also run basedpyright / pnpm check")
+    parser.add_argument("--no-tests", action="store_true")
+    options = parser.parse_args()
+
+    top = git("rev-parse", "--show-toplevel", cwd=os.getcwd())
+    root = Path(top[0]) if top else Path.cwd()
+    files = [path.resolve() for path in options.paths] or changed_files(root, options.base)
+    files = [file for file in files if file.suffix in PYTHON_SUFFIXES | FRONTEND_SUFFIXES]
+    if not files:
+        print("verify: no changed Python or frontend files")
+        return 0
+
+    packages = {}
+    for file in files:
+        packages.setdefault(package_of(file, root), []).append(file)
+
+    passed = True
+    for package, package_files in sorted(packages.items()):
+        print(f"== {package.relative_to(root) if package != root else '.'} ({len(package_files)} files)")
+        python_files = [file for file in package_files if file.suffix in PYTHON_SUFFIXES]
+        frontend_files = [file for file in package_files if file.suffix in FRONTEND_SUFFIXES]
+        if python_files:
+            passed &= verify_python(package, python_files, options)
+        if frontend_files:
+            passed &= verify_frontend(package, frontend_files, options)
+    print("verify: PASS" if passed else "verify: FAIL")
+    return 0 if passed else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

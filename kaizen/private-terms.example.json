@@ -1,0 +1,4 @@
+{
+  "terms": ["Acme", "acme-monorepo", "acme-internal"],
+  "allowed_roots": ["~/work/acme"]
+}

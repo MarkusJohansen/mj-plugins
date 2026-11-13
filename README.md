@@ -27,6 +27,7 @@ claude plugin install <plugin>@mj-plugins
 | [`opsx-orchestrate`](./opsx-orchestrate) | 2 skills | Orchestration over the opsx (OpenSpec) plugin — partition change items into non-overlapping scopes, then fan them out across isolated worktrees as one branch + PR each. |
 | [`worktree`](./worktree) | 3 skills | Add, use, and clean up git worktrees as siblings of the repo checkout. |
 | [`htmlify`](./htmlify) | 1 skill | Turn anything from the conversation into one self-contained, offline HTML artifact you can open and share. |
+| [`kaizen`](./kaizen) | 1 skill, 4 hooks, a weekly job | Continuous self-improvement: introspection, a weekly launchd job that commits evidence-backed fixes to a review branch, shell-habit nudges with `verify` / `branch-brief`, lesson and size checks, and a private-name guard. |
 
 ```sh
 claude plugin install scaffold@mj-plugins
@@ -36,6 +37,7 @@ claude plugin install notify@mj-plugins
 claude plugin install opsx-orchestrate@mj-plugins
 claude plugin install worktree@mj-plugins
 claude plugin install htmlify@mj-plugins
+claude plugin install kaizen@mj-plugins
 ```
 
 > **Note:** the `devkit`, `obsidian` and `notify` hooks read a few env vars for tuning —

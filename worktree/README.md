@@ -25,8 +25,8 @@ Worktrees live next to the main checkout, never inside it:
 
 ```
 ~/code/
-  monopy/                    # main checkout
-  monopy--EE-416-geometry/   # worktree for branch EE-416-geometry
+  shop/                      # main checkout
+  shop--PROJ-42-checkout/    # worktree for branch PROJ-42-checkout
 ```
 
 A worktree nested inside the checkout (`repo/.worktrees/x`) gets picked up by the
