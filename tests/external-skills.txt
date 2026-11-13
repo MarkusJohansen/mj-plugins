@@ -1,0 +1,27 @@
+# Skills and slash commands that plugin docs may name without shipping them here.
+# One name per line; check_repo.py reads this file.
+
+# Claude Code built-ins
+clear
+compact
+config
+init
+loop
+plugin
+review
+schedule
+security-review
+simplify
+update-config
+
+# The opsx (OpenSpec) plugin, which opsx-orchestrate drives
+apply
+
+# The personal config repo that sits next to this marketplace
+artifactify
+experiment
+harden
+openspec-ticket
+prime
+ticket
+video

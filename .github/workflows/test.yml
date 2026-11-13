@@ -1,0 +1,20 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    # macOS: the hooks target it (bash 3.2, BSD tools, launchd), so that is what is tested.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install ruff for the auto-format cases
+        run: pip install ruff
+      - name: Run every suite
+        run: bash tests/run.sh

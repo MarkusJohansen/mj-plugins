@@ -21,12 +21,12 @@ claude plugin install <plugin>@mj-plugins
 | Plugin | Contents | Description |
 |--------|----------|-------------|
 | [`scaffold`](./scaffold) | 4 skills | Scaffolds and maintains a personal Claude Code config space — skills, subagents, hooks, rules, a global `CLAUDE.md`, and a `bootstrap.sh` that symlinks it all into `~/.claude/`. |
-| [`devkit`](./devkit) | 8 skills, 3 agents, 3 hooks | Coding toolkit — planning, commit/PR/review/quality/docs skills, code-focused subagents, and auto-format / secret / dangerous-`rm` safety hooks. |
-| [`obsidian`](./obsidian) | 6 skills, 1 agent, 3 hooks | Obsidian vault toolkit — note skills, the `vault-librarian` subagent, a path-scoped vault rule, and edit-guard / frontmatter / stub hooks. |
+| [`devkit`](./devkit) | 7 skills, 3 agents, 3 hooks | Coding toolkit — planning, commit/PR/review/quality/docs skills, code-focused subagents, and auto-format / secret / dangerous-`rm` safety hooks. |
+| [`obsidian`](./obsidian) | 11 skills, 1 agent, 3 hooks | Obsidian vault toolkit — note skills, the `vault-librarian` subagent, a vault rule loaded when a session starts in the vault, and edit-guard / note-check hooks. |
 | [`notify`](./notify) | 3 hooks | Desktop attention cues — a Stop chime that fires when you've walked away, its idle-tracker, and a macOS notification banner. |
 | [`opsx-orchestrate`](./opsx-orchestrate) | 2 skills | Orchestration over the opsx (OpenSpec) plugin — partition change items into non-overlapping scopes, then fan them out across isolated worktrees as one branch + PR each. |
 | [`worktree`](./worktree) | 3 skills | Add, use, and clean up git worktrees as siblings of the repo checkout. |
-| [`htmlify`](./htmlify) | 1 skill | Turn anything from the conversation into one self-contained, offline HTML artifact you can open and share. |
+| [`htmlify`](./htmlify) | 1 skill | Turn anything from the conversation into one HTML page, published as a private claude.ai Artifact with a shareable link. |
 | [`kaizen`](./kaizen) | 1 skill, 4 hooks, a weekly job | Continuous self-improvement: introspection, a weekly launchd job that commits evidence-backed fixes to a review branch, shell-habit nudges with `verify` / `branch-brief`, lesson and size checks, and a private-name guard. |
 
 ```sh
@@ -59,6 +59,22 @@ When **changing** an existing plugin rather than adding one, bump `version` in i
 `plugin.json`. `claude plugin update` compares that version, so a new skill shipped
 without a bump reports "already at the latest version" and never reaches an existing
 install.
+
+## Tests
+
+```sh
+bash tests/run.sh
+```
+
+Runs `tests/check_repo.py` and every plugin's `hooks/tests/run.sh`; CI runs the same file on
+each push. `check_repo.py` fails when the repo stops describing itself truthfully: a plugin
+missing from `marketplace.json`, a `hooks.json` pointing at a script that is gone, a skill
+whose frontmatter name differs from its folder, a doc that names a `/skill` nobody ships
+(names from outside this repo go in `tests/external-skills.txt`), or a plugin table above
+that miscounts.
+
+A hook that has something to tell Claude prints JSON with `additionalContext` (or exits 2
+with stderr). Stderr from a hook that exits 0 never reaches the model.
 
 ## License
 
