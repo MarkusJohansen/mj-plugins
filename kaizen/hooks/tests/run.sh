@@ -157,5 +157,44 @@ rm "$PROJECT/tool/broken.sh"
 printf '#!/usr/bin/env bash\necho assertion failed; exit 1\n' > "$PROJECT/tool/tests/run.sh"
 check "verify reports a failing script suite" 1 "$(verify_output | grep -c 'FAIL  tool/tests/run.sh')"
 
+# --- the usage miner: token totals per model, main sessions apart from subagents
+MINE="$HOOKS/../skills/introspect/mine.py"
+FIXTURE="$SANDBOX/claude-fixture"
+mkdir -p "$FIXTURE/projects/proj/sess1/subagents"
+now=$(python3 -c 'import datetime; print(datetime.datetime.now(datetime.timezone.utc).isoformat())')
+turn() { # turn ID MODEL OUTPUT_TOKENS -> one assistant transcript line
+  jq -cn --arg id "$1" --arg model "$2" --argjson out "$3" --arg t "$now" \
+    '{type: "assistant", timestamp: $t, message: {id: $id, model: $model, content: [],
+      usage: {input_tokens: 10, output_tokens: $out, cache_read_input_tokens: 100, cache_creation_input_tokens: 5}}}'
+}
+{ turn a big 40; turn a big 70; turn b big 30; turn c small 5; } > "$FIXTURE/projects/proj/sess1.jsonl"
+turn d small 200 > "$FIXTURE/projects/proj/sess1/subagents/agent-1.jsonl"
+python3 "$MINE" --days 7 --claude-dir "$FIXTURE" --out "$SANDBOX/mined.json" >/dev/null 2>&1
+check "a streamed reply is counted once, at its largest count" 100 "$(jq '.usage.tokens.main.big.output' "$SANDBOX/mined.json")"
+check "input and cache tokens are summed per message" "20 200 10" \
+  "$(jq -r '.usage.tokens.main.big | "\(.input) \(.cache_read) \(.cache_write)"' "$SANDBOX/mined.json")"
+check "subagent tokens are kept apart from the main session" "5 200" \
+  "$(jq -r '"\(.usage.tokens.main.small.output) \(.usage.tokens.subagents.small.output)"' "$SANDBOX/mined.json")"
+
+# --- weekly.sh: leaves unless the newest report is a week old
+WEEKLY="$HOOKS/../scripts/weekly.sh"
+REPORTS="$SANDBOX/reports"
+mkdir -p "$REPORTS" "$HOME/.local/bin"
+printf '#!/bin/sh\necho called >> "%s/claude.calls"\n' "$SANDBOX" > "$HOME/.local/bin/claude"
+chmod +x "$HOME/.local/bin/claude"
+days_ago() { python3 -c 'import datetime, sys; print(datetime.date.today() - datetime.timedelta(days=int(sys.argv[1])))' "$1"; }
+claude_ran() { [[ -f "$SANDBOX/claude.calls" ]] && echo yes || echo no; }
+touch "$REPORTS/$(days_ago 3).md"
+KAIZEN_REPORT_DIR="$REPORTS" bash "$WEEKLY" >/dev/null 2>&1
+check "weekly.sh leaves quietly when the newest report is 3 days old" "0 no" "$? $(claude_ran)"
+rm "$REPORTS"/*.md
+touch "$REPORTS/$(days_ago 8).md"
+KAIZEN_REPORT_DIR="$REPORTS" bash "$WEEKLY" >/dev/null 2>&1
+check "weekly.sh runs when the newest report is 8 days old" yes "$(claude_ran)"
+rm -f "$SANDBOX/claude.calls" "$REPORTS"/*.md
+touch "$REPORTS/$(days_ago 1).md"
+KAIZEN_FORCE=1 KAIZEN_REPORT_DIR="$REPORTS" bash "$WEEKLY" >/dev/null 2>&1
+check "KAIZEN_FORCE=1 runs regardless of the newest report" yes "$(claude_ran)"
+
 echo "$passed passed, $failed failed"
 (( failed == 0 ))

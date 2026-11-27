@@ -1,6 +1,7 @@
 ---
 name: introspect
 description: Mine the user's own Claude Code footprint (~/.claude transcripts, history, plugins, marketplaces, skills, agents, hooks, memory) and write an evidence-backed overview of how they use Claude, their favourite tools, custom plugins, what's on offer in their marketplaces, what's in memory, underused capabilities and concrete habits to improve. Use when the user says "audit my claude usage", "how am I using claude", "what are my favourite tools/skills", "what am I underusing", "review my claude setup", "/introspect", or wants a retrospective on their Claude Code workflow.
+disable-model-invocation: true
 ---
 
 # introspect

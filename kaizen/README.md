@@ -23,10 +23,15 @@ or not.
 
 ## The weekly loop
 
+The LaunchAgent starts `weekly.sh` at every login and every morning at 08:30, and the script
+leaves at once unless the newest report is a week old. A single weekly slot would not do:
+launchd drops a run that was due while the Mac was off. `KAIZEN_FORCE=1` runs it regardless.
+
 1. `shell-patterns.py`, `harness-scan.py` and the introspect miner read the last 7 days of
    transcripts. `redact.py` replaces every private term with `<work>` before Claude sees it.
 2. Claude writes a report (default `~/second-brain/_system/introspect/<date>.md`, override with
-   `KAIZEN_REPORT_DIR`).
+   `KAIZEN_REPORT_DIR`). It includes tokens per model, main sessions apart from subagents, which
+   the miner sums from each reply's usage record (`usage.tokens` in its JSON).
 3. Claude picks at most two changes backed by numbers, for example a new helper for a shell
    recipe repeated across sessions, implements them in its own clone of this marketplace on a
    `kaizen/<date>` branch, runs the hook tests before and after, bumps the plugin version
@@ -43,7 +48,8 @@ bash ~/.claude/plugins/marketplaces/mj-plugins/kaizen/scripts/setup.sh
 ```
 
 `setup.sh` links `verify` and `branch-brief` into `~/.local/bin`, clones the marketplace to
-`~/.local/share/kaizen/mj-plugins` and loads the LaunchAgent (Thursdays 08:30). Everything runs
+`~/.local/share/kaizen/mj-plugins` and loads the LaunchAgent (at login and daily 08:30, so a
+report that is due is written on the spot). Everything runs
 from paths outside `~/Documents`, which launchd jobs can't read. The clone sits outside
 `~/.claude` because Claude Code protects that folder from edits in unattended runs.
 

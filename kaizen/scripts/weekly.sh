@@ -24,6 +24,16 @@ BRANCH="kaizen/$TODAY"
 WORK_DIR="$(dirname "$OUTDIR")"
 mkdir -p "$HIST" "$OUTDIR"
 
+# launchd drops a run that was due while the Mac was off, so the job fires at every login and
+# every morning (setup.sh) and leaves here unless the newest report is a week old.
+# KAIZEN_FORCE=1 runs regardless.
+NEWEST=$(ls "$OUTDIR"/20??-??-??.md 2>/dev/null | sort | tail -1 || true)
+if [[ -z "${KAIZEN_FORCE:-}" && -n "$NEWEST" ]]; then
+  # A file name that is not a real date counts as due, rather than stopping the job for good.
+  age=$(python3 -I -c 'import datetime, sys; print((datetime.date.today() - datetime.date.fromisoformat(sys.argv[1])).days)' "$(basename "$NEWEST" .md)" 2>/dev/null) || age=7
+  (( age < 7 )) && exit 0
+fi
+
 CLAUDE_BIN="$HOME/.local/bin/claude"
 [[ -x "$CLAUDE_BIN" ]] || CLAUDE_BIN=$(zsh -lc 'command -v claude')
 
@@ -31,7 +41,9 @@ python3 -I "$PLUGIN/skills/introspect/mine.py" --days 7 --out "$HIST/$TODAY.json
 python3 -I "$PLUGIN/scripts/harness-scan.py" > "$HIST/scan-$TODAY.txt"
 python3 -I "$PLUGIN/scripts/shell-patterns.py" --days 7 --out "$HIST/shell-$TODAY.json"
 cp "$HOME/.claude/learn-stats.json" "$HIST/learn-stats.json" 2>/dev/null || true
-python3 -I "$PLUGIN/scripts/redact.py" "$HIST/$TODAY.json" "$HIST/scan-$TODAY.txt" "$HIST/shell-$TODAY.json"
+# The nudge log, so the improvement run can read the commands that were re-issued.
+cp "$HOME/.claude/shell-habits/hits.jsonl" "$HIST/hits-$TODAY.jsonl" 2>/dev/null || true
+python3 -I "$PLUGIN/scripts/redact.py" "$HIST/$TODAY.json" "$HIST/scan-$TODAY.txt" "$HIST/shell-$TODAY.json" "$HIST/hits-$TODAY.jsonl"
 PREV=$(ls "$HIST"/20*.json 2>/dev/null | grep -v "$TODAY" | tail -1 || true)
 
 PRIVACY="Never write an employer, client or work-project name; the data is redacted to <work>, keep it that way."
@@ -40,13 +52,13 @@ REPORT_PROMPT="Weekly Claude Code self-review. Data: $HIST/$TODAY.json (last 7 d
 Read the JSON with jq or short python one-liners per key, not in one dump.
 Write $OUTDIR/$TODAY.md. Frontmatter exactly: categories: [system], created: $TODAY, tags: [claude-code], related: []. Then:
 1. One sentence: the single most important change since last week (or 'first report' if none).
-2. A table: sessions, prompts, median prompt length, /clear count, Bash vs Read calls, interrupts, corrections, this week vs last week.
+2. A table: sessions, prompts, median prompt length, /clear count, /model count, Bash vs Read calls, interrupts, corrections, this week vs last week. Then a second table from usage.tokens: one row per model for the main sessions and one per model for subagents, with fresh input (input + cache_write), cached input (cache_read) and output tokens in thousands, this week vs last week (a previous file without usage.tokens: write 'not measured'). Under it, one sentence naming the biggest row and the share subagents take of all output tokens.
 3. Learning tracks: uses of TaskCreate, CronCreate, Workflow, Artifact, LSP, EnterPlanMode, codebase-memory MCP this week (0 is a finding). Plus learn mode, from $HIST/learn-stats.json if it exists (running totals: sessions, turns, blockedEdits).
 4. Up to 3 quoted correction samples and whether a skill/CLAUDE.md/memory file was edited the same week.
 5. Harness upkeep, from $HIST/scan-$TODAY.txt: for each instruction file over budget, one line proposing what to cut or move. For each prompt repeated 3+ times in a project, propose a local skill: one-word name + what it would do. Propose only.
 6. Shell recipes, from $HIST/shell-$TODAY.json: Bash calls and output (chars/4 = tokens), the 3 costliest repeated shapes with one sample each, and the shell-habits nudge hits by outcome: denied (the nudge), reissued (the same command run anyway: the helper didn't fit) and later (other calls in the session after the nudge).
 7. Three concrete actions for next week, one line each.
-Max 65 lines. Plain words, explain any jargon. Evidence or silence: every claim cites a number. $PRIVACY Do not edit any other file."
+Max 75 lines. Plain words, explain any jargon. Evidence or silence: every claim cites a number. $PRIVACY Do not edit any other file."
 
 cd "$WORK_DIR"
 "$CLAUDE_BIN" -p "$REPORT_PROMPT" \
@@ -64,7 +76,7 @@ IMPROVE_PROMPT="You are the weekly self-improvement run for this Claude Code set
 Evidence: $OUTDIR/$TODAY.md (this week's report), $HIST/shell-$TODAY.json (repeated shell recipes and nudge hits), $HIST/scan-$TODAY.txt (instruction files over budget).
 Pick at most TWO changes, each backed by a number from the evidence, in order of preference:
 - a shell recipe repeated in 3+ sessions costing 20K+ chars: a helper in kaizen/scripts/ (setup.sh links helpers onto PATH), a rule in kaizen/hooks/shell-habits.py pointing at it, a test in kaizen/hooks/tests/run.sh, and a line in kaizen/README.md;
-- a shell-habits rule with 3+ 'reissued' hits: read those commands, then extend its helper so they are no longer needed, or narrow the pattern;
+- a shell-habits rule with 3+ 'reissued' hits: read those commands in $HIST/hits-$TODAY.jsonl (outcome 'reissued'), then extend its helper so they are no longer needed, or narrow the pattern;
 - a skill in this repo over its 500-line budget: move detail into a linked reference file, never dropping a rule that still earns its place.
 Never edit files outside kaizen/, never delete a hook or skill, never weaken name-guard. $PRIVACY If nothing clears the bar, change nothing.
 Run 'bash kaizen/hooks/tests/run.sh' BEFORE editing and again after. If a test that passed before now fails and you can't fix it, 'git checkout .' and report it. Otherwise bump the patch version in kaizen/.claude-plugin/plugin.json, and commit on $BRANCH with a '[chore][kaizen] <summary>' title and a body citing the evidence. Do not push.

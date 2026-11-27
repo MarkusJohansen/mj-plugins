@@ -4,7 +4,9 @@
 # - links verify and branch-brief into ~/.local/bin;
 # - clones the marketplace to ~/.local/share/kaizen/<marketplace>, the copy the weekly run edits
 #   (not under ~/.claude, which Claude Code protects from edits even in acceptEdits mode);
-# - writes and loads a LaunchAgent that runs scripts/weekly.sh on Thursdays at 08:30.
+# - writes and loads a LaunchAgent that starts scripts/weekly.sh at every login and every day
+#   at 08:30. launchd drops a run that was due while the Mac was off, so one fixed weekly slot
+#   gets skipped; weekly.sh itself leaves at once unless the newest report is a week old.
 # Everything points at the marketplace clone under ~/.claude/plugins, which launchd can read
 # (it can't read ~/Documents) and whose path survives plugin updates.
 # Env: KAIZEN_REPORT_DIR (where reports go), KAIZEN_SOURCE (your working checkout,
@@ -54,8 +56,9 @@ cat > "$PLIST" <<EOF
     <string>/bin/zsh</string><string>-lc</string>
     <string>${environment}bash "$PLUGIN/scripts/weekly.sh"</string>
   </array>
+  <key>RunAtLoad</key><true/>
   <key>StartCalendarInterval</key>
-  <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>8</integer><key>Minute</key><integer>30</integer></dict>
+  <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>30</integer></dict>
   <key>StandardOutPath</key><string>$LOG</string>
   <key>StandardErrorPath</key><string>$LOG</string>
 </dict>

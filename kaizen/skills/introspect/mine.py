@@ -158,8 +158,35 @@ def automated_sessions(files, threshold=5):
     return {f for f, v in prefix.items() if v and counts[v] >= threshold}
 
 
+TOKEN_KEYS = {"input": "input_tokens", "output": "output_tokens",
+              "cache_read": "cache_read_input_tokens", "cache_write": "cache_creation_input_tokens"}
+
+
+def note_tokens(seen, msg):
+    """Record one assistant message's token counts in seen[message id]. A streamed reply is
+    written as several lines that repeat the same id, so the largest count per field is kept."""
+    use, mid = msg.get("usage"), msg.get("id")
+    if not isinstance(use, dict) or not mid or not msg.get("model"):
+        return
+    row = seen.setdefault(mid, {"model": msg["model"], **dict.fromkeys(TOKEN_KEYS, 0)})
+    for short, key in TOKEN_KEYS.items():
+        if isinstance(use.get(key), int):
+            row[short] = max(row[short], use[key])
+
+
+def tokens_by_model(seen):
+    """{model: {input, output, cache_read, cache_write}}, largest output first."""
+    totals = {}
+    for row in seen.values():
+        total = totals.setdefault(row["model"], dict.fromkeys(TOKEN_KEYS, 0))
+        for short in TOKEN_KEYS:
+            total[short] += row[short]
+    return dict(sorted(totals.items(), key=lambda kv: -kv[1]["output"]))
+
+
 def usage(cd, since):
     tools, skills, agents, mcp, models, slash = C(), C(), C(), C(), C(), C()
+    main_tokens, sub_tokens = {}, {}
     projects, hours, weekdays, days = C(), C(), C(), C()
     plugin_attr, skill_attr = C(), C()
     perm_modes, efforts, branches = C(), C(), C()
@@ -178,12 +205,14 @@ def usage(cd, since):
         if f.parent.parent.name in auto_ids:
             continue
         for line in f.open(errors="replace"):
-            if '"tool_use"' not in line:
+            if '"tool_use"' not in line and '"usage"' not in line:
                 continue
             try:
                 d = json.loads(line)
             except Exception:
                 continue
+            if d.get("type") == "assistant" and (ts(d.get("timestamp")) or 0) >= since:
+                note_tokens(sub_tokens, d.get("message") or {})
             for c in (d.get("message") or {}).get("content") or []:
                 if isinstance(c, dict) and c.get("type") == "tool_use":
                     sub_tools[c.get("name", "?")] += 1
@@ -229,6 +258,7 @@ def usage(cd, since):
             msg = d.get("message") or {}
             content = msg.get("content")
             if d.get("type") == "assistant":
+                note_tokens(main_tokens, msg)
                 if msg.get("model"):
                     models[msg["model"]] += 1
                 for c in content if isinstance(content, list) else []:
@@ -303,6 +333,7 @@ def usage(cd, since):
         "session_minutes_median": round(med(durations), 1),
         "session_minutes_p90": round(durations[int(len(durations) * .9)], 1) if durations else 0,
         "total_cost_usd": round(sum(s.get("cost", 0) for s in real), 2),
+        "tokens": {"main": tokens_by_model(main_tokens), "subagents": tokens_by_model(sub_tokens)},
         "total_lines_added": sum(s.get("lines_added", 0) for s in real),
         "tools": tools.most_common(), "skills_via_tool": skills.most_common(),
         "slash_commands": slash.most_common(60), "subagents": agents.most_common(),
