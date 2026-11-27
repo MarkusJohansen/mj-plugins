@@ -10,7 +10,9 @@ description: Create a new git worktree as a sibling of the repo checkout. Use wh
 - **Branch name.** Follow the repo's branch convention (e.g. `EE-416-short-description`).
 - **Base ref** (optional). Defaults to the current HEAD.
 
-If the branch isn't given, ask for it. Don't invent one.
+If the branch isn't given, name it after the task in the repo's own convention (look at
+`git branch -a`) and say which name you chose. Ask only when the convention needs something you
+don't have, such as a ticket number.
 
 ## Where it goes
 
