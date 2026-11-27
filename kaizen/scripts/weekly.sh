@@ -50,7 +50,7 @@ PRIVACY="Never write an employer, client or work-project name; the data is redac
 
 REPORT_PROMPT="Weekly Claude Code self-review. Data: $HIST/$TODAY.json (last 7 days, from the introspect skill's mine.py)${PREV:+; previous run: $PREV}.
 Read the JSON with jq or short python one-liners per key, not in one dump.
-Write $OUTDIR/$TODAY.md. Frontmatter exactly: categories: [system], created: $TODAY, tags: [claude-code], related: []. Then:
+Write $OUTDIR/$TODAY.md. Frontmatter exactly, with categories as a block list (the line 'categories:' followed by the line '  - system'), then created: $TODAY, tags: [claude-code], related: []. Then:
 1. One sentence: the single most important change since last week (or 'first report' if none).
 2. A table: sessions, prompts, median prompt length, /clear count, /model count, Bash vs Read calls, interrupts, corrections, this week vs last week. Then a second table from usage.tokens: one row per model for the main sessions and one per model for subagents, with fresh input (input + cache_write), cached input (cache_read) and output tokens in thousands, this week vs last week (a previous file without usage.tokens: write 'not measured'). Under it, one sentence naming the biggest row and the share subagents take of all output tokens.
 3. Learning tracks: uses of TaskCreate, CronCreate, Workflow, Artifact, LSP, EnterPlanMode, codebase-memory MCP this week (0 is a finding). Plus learn mode, from $HIST/learn-stats.json if it exists (running totals: sessions, turns, blockedEdits).
