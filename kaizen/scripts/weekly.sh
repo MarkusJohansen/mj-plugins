@@ -66,6 +66,11 @@ cd "$WORK_DIR"
   --add-dir "$HIST" --add-dir "$OUTDIR" \
   --allowedTools "Read" "Bash(jq *)" "Bash(python3 -c *)" "Bash(ls *)"
 
+# A report nobody knows about does not get read: say that it exists, and where.
+if [[ -s "$OUTDIR/$TODAY.md" ]] && command -v osascript >/dev/null 2>&1; then
+  osascript -e "display notification \"${OUTDIR/#$HOME/~}/$TODAY.md\" with title \"Weekly Claude review is ready\"" >/dev/null 2>&1 || true
+fi
+
 if ! git -C "$TARGET" fetch -q origin main; then
   echo "Self-improvement skipped: could not fetch origin for $TARGET." >> "$OUTDIR/$TODAY.md"
   exit 0

@@ -31,7 +31,8 @@ launchd drops a run that was due while the Mac was off. `KAIZEN_FORCE=1` runs it
    transcripts. `redact.py` replaces every private term with `<work>` before Claude sees it.
 2. Claude writes a report (default `~/second-brain/_system/introspect/<date>.md`, override with
    `KAIZEN_REPORT_DIR`). It includes tokens per model, main sessions apart from subagents, which
-   the miner sums from each reply's usage record (`usage.tokens` in its JSON).
+   the miner sums from each reply's usage record (`usage.tokens` in its JSON). A macOS
+   notification names the file once it is written.
 3. Claude picks at most two changes backed by numbers, for example a new helper for a shell
    recipe repeated across sessions, implements them in its own clone of this marketplace on a
    `kaizen/<date>` branch, runs the hook tests before and after, bumps the plugin version
