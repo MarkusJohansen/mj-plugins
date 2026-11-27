@@ -21,7 +21,7 @@ claude plugin install <plugin>@mj-plugins
 | Plugin | Contents | Description |
 |--------|----------|-------------|
 | [`scaffold`](./scaffold) | 4 skills | Scaffolds and maintains a personal Claude Code config space — skills, subagents, hooks, rules, a global `CLAUDE.md`, and a `bootstrap.sh` that symlinks it all into `~/.claude/`. |
-| [`devkit`](./devkit) | 7 skills, 1 agent, 3 hooks | Coding toolkit — planning, commit/PR/review/quality/docs skills, the `quality-assurance` subagent, and auto-format / secret / dangerous-`rm` safety hooks. |
+| [`devkit`](./devkit) | 7 skills, 3 agents, 3 hooks | Coding toolkit — planning, commit/PR/review/quality/docs skills, code-focused subagents, and auto-format / secret / dangerous-`rm` safety hooks. |
 | [`obsidian`](./obsidian) | 11 skills, 1 agent, 3 hooks | Obsidian vault toolkit — note skills, the `vault-librarian` subagent, a vault rule loaded when a session starts in the vault, and edit-guard / note-check hooks. |
 | [`notify`](./notify) | 3 hooks | Desktop attention cues — a Stop chime that fires when you've walked away, its idle-tracker, and a macOS notification banner. |
 | [`opsx-orchestrate`](./opsx-orchestrate) | 2 skills | Orchestration over the opsx (OpenSpec) plugin — partition change items into non-overlapping scopes, then fan them out across isolated worktrees as one branch + PR each. |

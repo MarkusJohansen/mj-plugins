@@ -1,6 +1,7 @@
 ---
 name: quality-assurance
-description: Use this agent for deep code quality analysis of a defined part of the codebase. It audits design, hygiene, test coverage, overcomplication, and clean code adherence. Trigger when the user says "do a QA pass", "audit this module", "check test coverage", or "find quality issues in X".model: opus
+description: Use this agent for deep code quality analysis of a defined part of the codebase. It audits design, hygiene, test coverage, overcomplication, and clean code adherence. Trigger when the user says "do a QA pass", "audit this module", "check test coverage", or "find quality issues in X". For architectural alternatives (rather than quality issues), use `solution-architect`. To explain how a piece of code works without judging it, use `code-archaeologist`.
+model: opus
 tools:
   - Read
   - Glob

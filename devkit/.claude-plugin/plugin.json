@@ -1,6 +1,6 @@
 {
   "name": "devkit",
-  "description": "Coding toolkit — planning, commits, PRs, review, quality and documentation skills, a quality-assurance subagent, and PreToolUse/PostToolUse safety hooks (auto-format, secret/rm guards).",
+  "description": "Coding toolkit — planning, commits, PRs, review, quality and documentation skills, code-focused subagents, and PreToolUse/PostToolUse safety hooks (auto-format, secret/rm guards).",
   "version": "0.7.0",
   "author": {
     "name": "Markus Johansen"
