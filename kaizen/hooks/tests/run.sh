@@ -157,6 +157,19 @@ rm "$PROJECT/tool/broken.sh"
 printf '#!/usr/bin/env bash\necho assertion failed; exit 1\n' > "$PROJECT/tool/tests/run.sh"
 check "verify reports a failing script suite" 1 "$(verify_output | grep -c 'FAIL  tool/tests/run.sh')"
 
+# A .json file in a Python package is data: only a package with a package.json gets the frontend checks.
+mkdir -p "$PROJECT/pypkg" "$PROJECT/webpkg" "$SANDBOX/bin"
+printf '[project]\nname = "pypkg"\n' > "$PROJECT/pypkg/pyproject.toml"
+printf '{"a": 1}\n' > "$PROJECT/pypkg/fixture.json"
+printf '{"name": "webpkg"}\n' > "$PROJECT/webpkg/package.json"
+printf '#!/bin/sh\necho pnpm-called\nexit 1\n' > "$SANDBOX/bin/pnpm"
+chmod +x "$SANDBOX/bin/pnpm"
+check "a .json file in a Python package does not get pnpm check" 0 \
+  "$(PATH="$SANDBOX/bin:$PATH" verify_output --types --no-tests pypkg | grep -c 'pnpm check')"
+check "a package with a package.json still gets pnpm check" 1 \
+  "$(PATH="$SANDBOX/bin:$PATH" verify_output --types --no-tests webpkg | grep -c 'pnpm check')"
+rm -rf "$PROJECT/pypkg" "$PROJECT/webpkg"
+
 # --- the usage miner: token totals per model, main sessions apart from subagents
 MINE="$HOOKS/../skills/introspect/mine.py"
 FIXTURE="$SANDBOX/claude-fixture"

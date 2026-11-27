@@ -1,7 +1,7 @@
 {
   "name": "kaizen",
   "description": "A self-improvement loop for Claude Code: usage introspection, a weekly launchd job that mines transcripts and commits evidence-backed fixes to a review branch, shell-habit nudges with the verify and branch-brief helpers, a lesson-check Stop hook, instruction-size budgets, and a guard that keeps private names out of files written outside their roots.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": {
     "name": "Markus Johansen"
   },

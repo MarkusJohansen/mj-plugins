@@ -188,7 +188,8 @@ def main():
         if python_files:
             passed &= verify_python(package, python_files, options)
         shell_files = [file for file in package_files if file.suffix in SHELL_SUFFIXES]
-        if frontend_files:
+        # A .json file (a fixture, a schema) in a Python package is data, not a frontend file.
+        if frontend_files and (package / "package.json").exists():
             passed &= verify_frontend(package, frontend_files, options)
         if shell_files:
             passed &= verify_shell(package, shell_files)
