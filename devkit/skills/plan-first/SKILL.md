@@ -20,7 +20,8 @@ Skip the plan for one-line fixes, typo edits, or obviously trivial work.
 
 1. **Read the request in full.** Quote it back to yourself if there's any chance of misreading.
 2. **Read the touched code.** Plan against the actual paths, not assumptions.
-3. **List the unknowns** — questions you'd want answered before committing to an approach.
+3. **Look for prior art.** Has this problem, or one like it, been solved before, in this codebase or elsewhere? Is there a conventional architecture or a known design pattern for it? Asked after the code exists, a "yes" means a rewrite.
+4. **List the unknowns** — questions you'd want answered before committing to an approach.
 
 ## Format
 
@@ -30,6 +31,9 @@ Skip the plan for one-line fixes, typo edits, or obviously trivial work.
 
 ## Approach
 <2–4 sentences describing the strategy. Not implementation — strategy.>
+
+## Prior art
+<Where this, or something like it, is already solved, and the conventional architecture or pattern the approach follows. One or two lines. "Looked, found none" is an answer.>
 
 ## Implementation steps
 1. <Ordered, atomic. Each step should be reviewable as a discrete commit.>
@@ -44,6 +48,9 @@ Skip the plan for one-line fixes, typo edits, or obviously trivial work.
 
 ## Test plan
 - <How the change will be verified. Existing tests, new tests, manual checks.>
+
+## Done when
+- <The commands that must pass before this is finished: the tests above, `verify`, a spec check. Checkable by a script, not by opinion.>
 
 ## Out of scope
 - <Adjacent things you'll explicitly not address in this work.>
@@ -63,4 +70,4 @@ Skip the plan for one-line fixes, typo edits, or obviously trivial work.
 
 ## After approval
 
-When the user accepts the plan, work through the implementation steps in order. If you discover a step needs to change mid-flight, surface that explicitly ("step 3 turns out to need…") rather than silently deviating.
+When the user accepts the plan, work through the implementation steps in order, to the end, without checking in between steps. Finish by running every command under *Done when* and showing the result; the work is not done until they pass. If you discover a step needs to change mid-flight, surface that explicitly ("step 3 turns out to need…") rather than silently deviating.
