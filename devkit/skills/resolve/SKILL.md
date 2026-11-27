@@ -109,6 +109,8 @@ EOF
 
 Code fixes can be made before or after the preview, but if made before, mention in the preview that the edit is already on disk (and unstaged/uncommitted) so the user can review the diff alongside the reply drafts.
 
+A draft written before the fix describes a plan. After implementing, re-read each approved draft against the actual diff (test count, numbers, what was fixed) before posting. Post an unchanged draft as approved; show the user any draft the implementation made wrong, and get approval again before posting it.
+
 Do **not** resolve threads yourself. Resolution is the commenter's prerogative — they decide whether the response or fix addressed their concern. Your job ends at posting the approved reply (and pushing any code fix); leave the resolve button to them.
 
 ## Committing fixes
